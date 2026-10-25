@@ -4,6 +4,9 @@
 
 Eine kleine, freie Auswertungs-App für **Elitech-RC-Temperatur- und Feuchtelogger** (getestet mit dem RC-4H Pro). Die Messwerte erscheinen in einem interaktiven Graphen über beliebige Zeiträume, zusammen mit **Wetterdaten** (Temperatur und Luftfeuchte) und **Sonnenauf-/-untergang** für einen frei wählbaren Ort.
 
+> **▶ [Direkt im Browser ausprobieren](https://mgrundkoetter.github.io/hygrolog/)**: ohne Installation. Deine Daten bleiben in deinem Browser und werden nirgendwohin hochgeladen.
+> Gefällt sie dir, gibt es die Desktop-App für macOS, Windows und Linux im [aktuellen Release](https://github.com/mgrundkoetter/hygrolog/releases/latest).
+
 - Import der CSV-Berichte, die der Logger selbst auf sein USB-Laufwerk schreibt. Treiber oder Hersteller-Software sind nicht nötig.
 - Zeitraum per Datepicker (von/bis) oder per Schnellwahl (1 T … 1 J, Alles), dazu Zoom mit Mausrad bzw. Schieber
 - Auflösung automatisch oder fest: alle Messwerte, Stundenmittel, Tagesmittel mit Min/Max-Band
@@ -41,7 +44,7 @@ Die Pakete sind nicht signiert, weil Signaturzertifikate Geld kosten. Beim erste
 - **macOS:** App einmal öffnen und die Warnung mit *Fertig* schließen. Dann *Systemeinstellungen → Datenschutz & Sicherheit* öffnen, nach unten zum Hinweis zu Hygrolog scrollen und *Dennoch öffnen* klicken (mit Passwort bestätigen). Alternativ im Terminal: `xattr -dr com.apple.quarantine /Applications/Hygrolog.app`
 - **Windows:** SmartScreen → *Weitere Informationen* → *Trotzdem ausführen*
 
-Alternativ läuft dieselbe App auch im Browser, z. B. kostenlos über GitHub Pages (siehe unten).
+Alternativ läuft dieselbe App ohne Installation im Browser: [https://mgrundkoetter.github.io/hygrolog/](https://mgrundkoetter.github.io/hygrolog/)
 
 ## Entwicklung
 

@@ -4,6 +4,9 @@
 
 A small, free viewer for **Elitech RC temperature and humidity data loggers** (tested with the RC-4H Pro). Measurements are shown in an interactive chart over any time range, together with **weather data** (temperature and humidity) and **sunrise/sunset** for a location of your choice.
 
+> **▶ [Try it in your browser](https://mgrundkoetter.github.io/hygrolog/)**: no installation needed. Your data stays in your browser and is never uploaded.
+> If you like it, get the desktop app for macOS, Windows or Linux from the [latest release](https://github.com/mgrundkoetter/hygrolog/releases/latest).
+
 - Imports the CSV reports the logger writes to its own USB drive. No drivers or vendor software needed.
 - Pick a time range with the date picker (from/to) or a quick selection (1 d … 1 y, all), and zoom with the mouse wheel or slider
 - Automatic or fixed resolution: all readings, hourly means, daily means with a min/max band
@@ -42,7 +45,7 @@ The packages are not signed, because signing certificates cost money. The operat
 - **macOS:** Open the app once and close the warning with *Done*. Then go to *System Settings → Privacy & Security*, scroll down to the message about Hygrolog and click *Open Anyway* (confirm with your password). Alternatively, in the Terminal: `xattr -dr com.apple.quarantine /Applications/Hygrolog.app`
 - **Windows:** SmartScreen → *More info* → *Run anyway*
 
-The same app also runs in the browser, e.g. for free via GitHub Pages (see below).
+The same app also runs in the browser, without installation: [https://mgrundkoetter.github.io/hygrolog/](https://mgrundkoetter.github.io/hygrolog/)
 
 ## Development
 
