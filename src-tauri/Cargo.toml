@@ -1,6 +1,6 @@
 [package]
 name = "hygrolog"
-version = "0.1.0"
+version = "0.1.1"
 description = "Auswertung für Elitech-RC-Logger mit Wetterdaten"
 authors = []
 license = "MIT"
