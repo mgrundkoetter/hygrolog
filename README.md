@@ -60,7 +60,7 @@ npm run tauri build  # installer for the current operating system
 
 ### Publishing without hosting costs
 
-- **Installers:** Push a tag (`git tag v0.1.0 && git push --tags`). The workflow `.github/workflows/release.yml` builds packages for all three operating systems on GitHub Actions and creates a draft release.
+- **Installers:** Set the new version in `package.json`, `src-tauri/tauri.conf.json` and `src-tauri/Cargo.toml`, then push a matching tag (`git tag v0.1.0 && git push --tags`). The workflow `.github/workflows/release.yml` builds packages for all three operating systems on GitHub Actions (about 15 minutes) and publishes them as a release. It refuses to run if the tag and the version differ.
 - **Web version:** Under *Settings → Pages*, select "GitHub Actions" as the source. After that, `.github/workflows/pages.yml` publishes every push to `main`.
 
 ### Structure
