@@ -1,8 +1,10 @@
 import type { Resolution } from './aggregate';
 import type { HumidityMode } from './humidity';
+import type { LangSetting } from './i18n';
 import type { Location } from './types';
 
 export interface Settings {
+  language: LangSetting;
   location: Location;
   provider: string;
   resolution: Resolution;
@@ -12,6 +14,7 @@ export interface Settings {
 }
 
 export const defaultSettings: Settings = {
+  language: 'auto',
   location: { name: 'Malter (Dippoldiswalde)', lat: 50.918, lon: 13.662 },
   provider: 'brightsky',
   resolution: 'auto',

@@ -2,7 +2,7 @@
   "name": "hygrolog",
   "private": true,
   "version": "0.1.0",
-  "description": "Auswertung von Elitech RC-Temperatur-/Feuchte-Loggern mit Wetterdaten zum Vergleich",
+  "description": "Viewer for Elitech RC temperature/humidity loggers with weather data for comparison",
   "type": "module",
   "license": "MIT",
   "scripts": {

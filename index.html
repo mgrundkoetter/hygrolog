@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Auswertung von Elitech RC-Temperatur- und Feuchteloggern mit Wetterdaten zum Vergleich." />
+    <meta name="description" data-i18n-attr="content:metaDescription" content="Viewer for Elitech RC temperature and humidity loggers with weather data for comparison." />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <title>Hygrolog</title>
   </head>
@@ -13,15 +13,15 @@
         <img src="./favicon.svg" alt="" width="28" height="28" />
         <div>
           <div class="brand-name">Hygrolog</div>
-          <div class="brand-sub">Auswertung für Elitech-RC-Logger</div>
+          <div class="brand-sub" data-i18n="brandSub">Viewer for Elitech RC loggers</div>
         </div>
       </div>
       <div class="actions">
         <button id="btn-import" class="btn primary" type="button">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-4-4m4 4 4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /></svg>
-          CSV importieren
+          <span data-i18n="importCsv">Import CSV</span>
         </button>
-        <button id="btn-settings" class="btn icon" type="button" aria-label="Einstellungen" title="Einstellungen">
+        <button id="btn-settings" class="btn icon" type="button" aria-label="Settings" title="Settings" data-i18n-attr="aria-label:settings;title:settings">
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></svg>
         </button>
       </div>
@@ -31,50 +31,50 @@
     <main>
       <section id="empty" class="card empty" hidden>
         <img src="./favicon.svg" alt="" width="56" height="56" />
-        <h1>Noch keine Messdaten</h1>
+        <h1 data-i18n="emptyTitle">No measurements yet</h1>
         <ol>
-          <li>Logger per USB anschließen. Er erscheint als Laufwerk, z.&nbsp;B. <b>RC-4HPro</b>.</li>
-          <li>Die <b>CSV-Datei</b> (z.&nbsp;B. <code>EFX267100110-0000001.csv</code>) hierher ziehen oder über <b>CSV importieren</b> auswählen.</li>
-          <li>Fertig. Die Daten bleiben lokal auf diesem Rechner gespeichert.</li>
+          <li data-i18n-html="emptyStep1">Connect the logger via USB. It shows up as a drive, e.g. <b>RC-4HPro</b>.</li>
+          <li data-i18n-html="emptyStep2">Drag the <b>CSV file</b> (e.g. <code>EFX267100110-0000001.csv</code>) here or choose it via <b>Import CSV</b>.</li>
+          <li data-i18n="emptyStep3">Done. The data stays stored locally on this computer.</li>
         </ol>
-        <p class="muted">Du kannst dieselbe Aufzeichnung später noch einmal importieren: doppelte Messpunkte werden zusammengeführt.</p>
-        <button id="btn-import-empty" class="btn primary" type="button">CSV-Datei auswählen</button>
+        <p class="muted" data-i18n="emptyHint">You can import the same recording again later: duplicate readings are merged.</p>
+        <button id="btn-import-empty" class="btn primary" type="button" data-i18n="chooseCsv">Choose CSV file</button>
       </section>
 
       <section id="workspace" hidden>
         <div class="card toolbar">
           <div class="toolbar-row">
             <div class="range">
-              <label class="field"><span>Von</span><input id="from" type="date" /></label>
-              <label class="field"><span>Bis</span><input id="to" type="date" /></label>
+              <label class="field"><span data-i18n="from">From</span><input id="from" type="date" /></label>
+              <label class="field"><span data-i18n="to">To</span><input id="to" type="date" /></label>
             </div>
-            <div class="segmented" id="presets" role="group" aria-label="Zeitraum">
-              <button type="button" data-days="1">1 T</button>
-              <button type="button" data-days="7">7 T</button>
-              <button type="button" data-days="30">30 T</button>
-              <button type="button" data-days="90">90 T</button>
-              <button type="button" data-days="365">1 J</button>
-              <button type="button" data-days="all">Alles</button>
+            <div class="segmented" id="presets" role="group" aria-label="Time range" data-i18n-attr="aria-label:timeRange">
+              <button type="button" data-days="1" data-i18n="presetDay">1 d</button>
+              <button type="button" data-days="7" data-i18n="presetWeek">7 d</button>
+              <button type="button" data-days="30" data-i18n="presetMonth">30 d</button>
+              <button type="button" data-days="90" data-i18n="presetQuarter">90 d</button>
+              <button type="button" data-days="365" data-i18n="presetYear">1 y</button>
+              <button type="button" data-days="all" data-i18n="presetAll">All</button>
             </div>
           </div>
           <div class="toolbar-row">
-            <label class="field inline"><span>Auflösung</span>
+            <label class="field inline"><span data-i18n="resolution">Resolution</span>
               <select id="res">
-                <option value="auto">Automatisch</option>
-                <option value="raw">Alle Messwerte</option>
-                <option value="hour">Stundenmittel</option>
-                <option value="day">Tagesmittel mit Min/Max</option>
+                <option value="auto" data-i18n="resAuto">Automatic</option>
+                <option value="raw" data-i18n="resRaw">All readings</option>
+                <option value="hour" data-i18n="resHour">Hourly mean</option>
+                <option value="day" data-i18n="resDay">Daily mean with min/max</option>
               </select>
             </label>
-            <label class="field inline"><span>Feuchte als</span>
+            <label class="field inline"><span data-i18n="humidityAs">Humidity as</span>
               <select id="hum">
-                <option value="relative">relative Feuchte (%)</option>
-                <option value="absolute">absolute Feuchte (g/m³)</option>
-                <option value="dewpoint">Taupunkt (°C)</option>
+                <option value="relative" data-i18n="humRelativeOption">relative humidity (%)</option>
+                <option value="absolute" data-i18n="humAbsoluteOption">absolute humidity (g/m³)</option>
+                <option value="dewpoint" data-i18n="humDewpointOption">dew point (°C)</option>
               </select>
             </label>
-            <label class="switch"><input id="show-weather" type="checkbox" /><span>Wetter</span></label>
-            <label class="switch"><input id="show-nights" type="checkbox" /><span>Nächte schattieren</span></label>
+            <label class="switch"><input id="show-weather" type="checkbox" /><span data-i18n="weather">Weather</span></label>
+            <label class="switch"><input id="show-nights" type="checkbox" /><span data-i18n="shadeNights">Shade nights</span></label>
           </div>
         </div>
 
@@ -87,11 +87,11 @@
 
         <div class="columns">
           <section class="card">
-            <h2>Geräte</h2>
+            <h2 data-i18n="devices">Devices</h2>
             <div id="devices" class="list"></div>
           </section>
           <section class="card">
-            <h2>Importierte Dateien</h2>
+            <h2 data-i18n="importedFiles">Imported files</h2>
             <div id="imports" class="list"></div>
           </section>
         </div>
@@ -99,52 +99,59 @@
     </main>
 
     <footer>
-      <span>Wetterdaten: <a id="attribution" target="_blank" rel="noopener"></a></span>
-      <span>Sonnenzeiten werden lokal berechnet</span>
-      <span>Alle Daten bleiben auf diesem Gerät</span>
+      <span><span data-i18n="footerWeather">Weather data:</span> <a id="attribution" target="_blank" rel="noopener"></a></span>
+      <span data-i18n="footerSun">Sun times are computed locally</span>
+      <span data-i18n="footerLocal">All data stays on this device</span>
     </footer>
 
     <dialog id="settings">
       <form method="dialog" class="dialog-body">
         <header class="dialog-head">
-          <h2>Einstellungen</h2>
-          <button class="btn icon" value="close" aria-label="Schließen">✕</button>
+          <h2 data-i18n="settings">Settings</h2>
+          <button class="btn icon" value="close" aria-label="Close" data-i18n-attr="aria-label:close">✕</button>
         </header>
 
         <fieldset>
-          <legend>Standort für Wetter & Sonnenzeiten</legend>
+          <legend data-i18n="language">Language</legend>
+          <select id="language" aria-label="Language" data-i18n-attr="aria-label:language">
+            <option value="auto" data-i18n="languageAuto">Automatic (system language)</option>
+          </select>
+        </fieldset>
+
+        <fieldset>
+          <legend data-i18n="locationLegend">Location for weather &amp; sun times</legend>
           <div class="search">
-            <input id="place-query" type="search" placeholder="Ort suchen, z. B. Dippoldiswalde" autocomplete="off" />
-            <button id="place-search" class="btn" type="button">Suchen</button>
+            <input id="place-query" type="search" placeholder="Search place, e.g. Dippoldiswalde" data-i18n-attr="placeholder:placeSearchPlaceholder" autocomplete="off" />
+            <button id="place-search" class="btn" type="button" data-i18n="search">Search</button>
           </div>
           <div id="place-results" class="place-results"></div>
           <div class="loc-grid">
-            <label class="field"><span>Name</span><input id="loc-name" type="text" /></label>
-            <label class="field"><span>Breite</span><input id="loc-lat" type="number" step="0.001" min="-90" max="90" /></label>
-            <label class="field"><span>Länge</span><input id="loc-lon" type="number" step="0.001" min="-180" max="180" /></label>
+            <label class="field"><span data-i18n="locName">Name</span><input id="loc-name" type="text" /></label>
+            <label class="field"><span data-i18n="locLat">Latitude</span><input id="loc-lat" type="number" step="0.001" min="-90" max="90" /></label>
+            <label class="field"><span data-i18n="locLon">Longitude</span><input id="loc-lon" type="number" step="0.001" min="-180" max="180" /></label>
           </div>
         </fieldset>
 
         <fieldset>
-          <legend>Wetterquelle</legend>
+          <legend data-i18n="weatherSource">Weather source</legend>
           <div id="providers" class="providers"></div>
         </fieldset>
 
         <fieldset>
-          <legend>Wetter-Cache</legend>
+          <legend data-i18n="weatherCache">Weather cache</legend>
           <div class="cache-row">
             <span id="cache-info" class="muted"></span>
-            <button id="cache-clear" class="btn" type="button">Cache leeren</button>
+            <button id="cache-clear" class="btn" type="button" data-i18n="clearCache">Clear cache</button>
           </div>
         </fieldset>
 
         <footer class="dialog-foot">
-          <button class="btn primary" value="save" id="settings-save">Übernehmen</button>
+          <button class="btn primary" value="save" id="settings-save" data-i18n="apply">Apply</button>
         </footer>
       </form>
     </dialog>
 
-    <div id="drop" class="drop" hidden><div>CSV-Dateien hier ablegen</div></div>
+    <div id="drop" class="drop" hidden><div data-i18n="dropHere">Drop CSV files here</div></div>
     <div id="toasts" class="toasts" aria-live="polite"></div>
 
     <script type="module" src="./src/main.ts"></script>

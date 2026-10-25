@@ -1,6 +1,8 @@
 // Parser for the CSV reports Elitech RC-4 / RC-4H(C) / RC-5 "Pro" loggers write to their USB drive.
 // The file is a free-form header block followed by a "Date,Time,Temperature[,Humidity]" table.
 
+import { t } from './i18n';
+
 export interface ParsedRow {
   local: number;
   temp: number | null;
@@ -53,7 +55,7 @@ export function parseElitechCsv(text: string, fileName = ''): ParsedReport {
   const lines = text.replace(/^﻿/, '').split(/\r?\n/);
   const headerIdx = lines.findIndex((l) => /^\s*"?date"?\s*[,;\t]\s*"?time"?/i.test(l));
   if (headerIdx < 0) {
-    throw new ParseError('Keine Datentabelle gefunden (erwartet: Zeile „Date,Time,Temperature,…“).');
+    throw new ParseError(t().parseNoTable);
   }
 
   const head = lines.slice(0, headerIdx).join('\n');
@@ -61,7 +63,7 @@ export function parseElitechCsv(text: string, fileName = ''): ParsedReport {
   const cols = lines[headerIdx].split(delimiter).map((c) => c.replace(/"/g, '').trim().toLowerCase());
   const tempIdx = cols.findIndex((c) => c.startsWith('temp'));
   const humIdx = cols.findIndex((c) => c.startsWith('hum'));
-  if (tempIdx < 0 && humIdx < 0) throw new ParseError('Weder Temperatur- noch Feuchtespalte gefunden.');
+  if (tempIdx < 0 && humIdx < 0) throw new ParseError(t().parseNoColumns);
 
   const fahrenheit = /fahrenheit/i.test(head);
 
@@ -69,7 +71,7 @@ export function parseElitechCsv(text: string, fileName = ''): ParsedReport {
   const serial =
     head.match(/Serial Number\s*:\s*([A-Za-z0-9-]+)/i)?.[1] ??
     fileName.match(/^([A-Za-z0-9]+)-\d+/)?.[1] ??
-    'unbekannt';
+    'unknown';
   const tb = head.match(/Time Base\s*:\s*UTC\s*([+-])\s*(\d{1,2}):?(\d{2})?/i);
   const tzOffsetMin = tb ? (tb[1] === '-' ? -1 : 1) * (+tb[2] * 60 + (tb[3] ? +tb[3] : 0)) : 0;
 
@@ -85,7 +87,7 @@ export function parseElitechCsv(text: string, fileName = ''): ParsedReport {
     const hum = humIdx >= 0 ? parseNumber(parts[humIdx]) : null;
     rows.push({ local, temp, hum });
   }
-  if (rows.length === 0) throw new ParseError('Die Datei enthält keine Messwerte.');
+  if (rows.length === 0) throw new ParseError(t().parseNoRows);
   rows.sort((a, b) => a.local - b.local);
 
   return {

@@ -12,7 +12,8 @@ import { CanvasRenderer } from 'echarts/renderers';
 import langDE from 'echarts/i18n/langDE-obj.js';
 import type { EChartsCoreOption } from 'echarts/core';
 import { aggregate, breakGaps, type ConcreteResolution, type Point } from './aggregate';
-import { humidityModes, type HumidityMode } from './humidity';
+import { humidityUnits, type HumidityMode } from './humidity';
+import { lang, locale, t } from './i18n';
 import { sunTimes, type Night } from './sun';
 import type { Location } from './types';
 
@@ -52,8 +53,8 @@ function token(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
-const fmt = (v: number, digits = 1) => v.toLocaleString('de-DE', { minimumFractionDigits: digits, maximumFractionDigits: digits });
-const time = (d: Date | null) => (d ? d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : '–');
+const fmt = (v: number, digits = 1) => v.toLocaleString(locale(), { minimumFractionDigits: digits, maximumFractionDigits: digits });
+const time = (d: Date | null) => (d ? d.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' }) : '–');
 
 type Datum = [number, number | null, number?, number?];
 
@@ -73,15 +74,24 @@ function prepare(points: Point[], res: ConcreteResolution): Datum[] {
 
 export class Chart {
   private chart?: echarts.ECharts;
+  private chartLang?: string;
+  private observer?: ResizeObserver;
   private last?: ChartInput;
 
   constructor(private el: HTMLElement) {}
 
   /** Created lazily: the container is hidden (zero size) until the first data arrives. */
+  /** Recreated when the language changes, because ECharts fixes its locale at init. */
   private instance(): echarts.ECharts {
+    if (this.chart && this.chartLang !== lang()) {
+      this.chart.dispose();
+      this.chart = undefined;
+    }
     if (!this.chart) {
-      this.chart = echarts.init(this.el, undefined, { renderer: 'canvas', locale: 'DE' });
-      new ResizeObserver(() => this.chart!.resize()).observe(this.el);
+      this.chartLang = lang();
+      this.chart = echarts.init(this.el, undefined, { renderer: 'canvas', locale: lang().toUpperCase() });
+      this.observer ??= new ResizeObserver(() => this.chart?.resize());
+      this.observer.observe(this.el);
     }
     return this.chart;
   }
@@ -98,7 +108,8 @@ export class Chart {
     const axis = token('--axis');
     const surface = token('--surface-1');
     const night = token('--night');
-    const hm = humidityModes[input.humMode];
+    const humUnit = humidityUnits[input.humMode];
+    const humAxis = { relative: t().axisHumRelative, absolute: t().axisHumAbsolute, dewpoint: t().axisHumDewpoint }[input.humMode];
     const humDigits = input.humMode === 'relative' ? 0 : 1;
     const series: any[] = [];
 
@@ -209,8 +220,8 @@ export class Chart {
       ],
       xAxis: [xAxis(0), xAxis(1)],
       yAxis: [
-        { ...yAxis('Temperatur (°C)'), gridIndex: 0 },
-        { ...yAxis(hm.axis), gridIndex: 1 },
+        { ...yAxis(t().axisTemp), gridIndex: 0 },
+        { ...yAxis(humAxis), gridIndex: 1 },
       ],
       axisPointer: { link: [{ xAxisIndex: 'all' }], lineStyle: { color: axis } },
       dataZoom: [
@@ -227,7 +238,7 @@ export class Chart {
           textStyle: { color: muted },
           dataBackground: { lineStyle: { color: axis }, areaStyle: { color: grid } },
           labelFormatter: (v: number) =>
-            new Date(v).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' }),
+            new Date(v).toLocaleDateString(locale(), { day: '2-digit', month: '2-digit', year: '2-digit' }),
         },
       ],
       tooltip: {
@@ -236,7 +247,7 @@ export class Chart {
         borderColor: grid,
         textStyle: { color: token('--text-primary'), fontSize: 12 },
         axisPointer: { type: 'line' },
-        formatter: (params: any[]) => this.tooltip(params, input, humDigits, hm.unit),
+        formatter: (params: any[]) => this.tooltip(params, input, humDigits, humUnit),
       },
       series,
     };
@@ -250,8 +261,8 @@ export class Chart {
     const d = new Date(ts);
     const head =
       input.res === 'day'
-        ? d.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })
-        : d.toLocaleString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        ? d.toLocaleDateString(locale(), { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })
+        : d.toLocaleString(locale(), { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
     const sun = sunTimes(ts, input.location.lat, input.location.lon);
     const isTemp = (p: any) => String(p.seriesId).endsWith(':temp');
     const row = (p: any) => {
@@ -267,7 +278,7 @@ export class Chart {
       `<div class="tt"><div class="tt-head">${head}</div>` +
       (temps ? `<div class="tt-group">${temps}</div>` : '') +
       (hums ? `<div class="tt-group">${hums}</div>` : '') +
-      `<div class="tt-sun">Sonnenaufgang ${time(sun.sunrise)} · Sonnenuntergang ${time(sun.sunset)}</div></div>`
+      `<div class="tt-sun">${t().sunrise} ${time(sun.sunrise)} · ${t().sunset} ${time(sun.sunset)}</div></div>`
     );
   }
 }

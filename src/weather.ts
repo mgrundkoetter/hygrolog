@@ -1,4 +1,5 @@
 import { getWeatherCache, putWeatherCache } from './db';
+import { lang, t } from './i18n';
 import type { Location, WeatherPoint } from './types';
 
 export interface MonthData {
@@ -8,9 +9,10 @@ export interface MonthData {
 
 export interface WeatherProvider {
   id: string;
-  label: string;
-  description: string;
-  attribution: string;
+  /** Localized, so read them at render time. */
+  readonly label: string;
+  readonly description: string;
+  readonly attribution: string;
   attributionUrl: string;
   /** Fetch hourly data for [from, to) (UTC epoch ms). */
   fetchRange(loc: Location, from: number, to: number): Promise<MonthData>;
@@ -30,9 +32,9 @@ async function getJson(url: string): Promise<any> {
 
 const brightSky: WeatherProvider = {
   id: 'brightsky',
-  label: 'DWD-Stationsdaten (Bright Sky)',
-  description: 'Messwerte der nächstgelegenen Station des Deutschen Wetterdienstes, ab 2010. Nur Deutschland.',
-  attribution: 'Deutscher Wetterdienst, via Bright Sky',
+  get label() { return t().brightSkyLabel; },
+  get description() { return t().brightSkyDescription; },
+  get attribution() { return t().brightSkyAttribution; },
   attributionUrl: 'https://brightsky.dev/',
   async fetchRange(loc, from, to) {
     const url =
@@ -54,8 +56,8 @@ const brightSky: WeatherProvider = {
 
 const openMeteo: WeatherProvider = {
   id: 'openmeteo',
-  label: 'Open-Meteo (Modelldaten)',
-  description: 'Reanalyse- und Modelldaten im ~10-km-Raster, weltweit, ab 1940. Gut für Orte ohne nahe DWD-Station.',
+  get label() { return t().openMeteoLabel; },
+  get description() { return t().openMeteoDescription; },
   attribution: 'Open-Meteo.com (CC BY 4.0)',
   attributionUrl: 'https://open-meteo.com/',
   async fetchRange(loc, from, to) {
@@ -180,7 +182,7 @@ export interface GeoResult {
 
 export async function searchPlace(query: string): Promise<GeoResult[]> {
   const json = await getJson(
-    `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=8&language=de&format=json`,
+    `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=8&language=${lang()}&format=json`,
   );
   return (json.results ?? []).map((r: any) => ({
     name: r.name,

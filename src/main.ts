@@ -2,7 +2,8 @@ import './styles.css';
 import { resolveResolution, stats, type Point, type Resolution, type Stats } from './aggregate';
 import { Chart, type ChartSeries } from './chart';
 import * as db from './db';
-import { convertHumidity, humidityModes, type HumidityMode } from './humidity';
+import { convertHumidity, humidityUnits, type HumidityMode } from './humidity';
+import { languageNames, locale, setLanguage, t, translateDocument, type LangSetting } from './i18n';
 import { parseElitechCsv } from './parser';
 import { loadSettings, saveSettings, type Settings } from './settings';
 import { nights } from './sun';
@@ -14,6 +15,7 @@ const DAY = 86_400_000;
 const NIGHTS_MAX_DAYS = 45;
 
 let settings: Settings = loadSettings();
+setLanguage(settings.language);
 let devices: Device[] = [];
 let imports: ImportRecord[] = [];
 let range = { from: 0, to: 0 };
@@ -26,10 +28,10 @@ const esc = (s: string) =>
   s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
 const fmtNum = (v: number, digits = 1) =>
-  v.toLocaleString('de-DE', { minimumFractionDigits: digits, maximumFractionDigits: digits });
-const fmtDate = (ts: number) => new Date(ts).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  v.toLocaleString(locale(), { minimumFractionDigits: digits, maximumFractionDigits: digits });
+const fmtDate = (ts: number) => new Date(ts).toLocaleDateString(locale(), { day: '2-digit', month: '2-digit', year: 'numeric' });
 const fmtDateTime = (ts: number) =>
-  new Date(ts).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+  new Date(ts).toLocaleString(locale(), { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
 
 const toInputDate = (ts: number) => {
   const d = new Date(ts);
@@ -73,7 +75,7 @@ function offsetLabel(min: number) {
 async function importFiles(files: FileList | File[]) {
   const list = Array.from(files).filter((f) => /\.csv$/i.test(f.name) || f.type === 'text/csv');
   if (!list.length) {
-    toast('Bitte CSV-Dateien des Loggers auswählen (die PDF-Datei enthält keine importierbaren Rohdaten).', true);
+    toast(t().pickCsvOnly, true);
     return;
   }
   const hadData = imports.length > 0;
@@ -82,7 +84,7 @@ async function importFiles(files: FileList | File[]) {
       const report = parseElitechCsv(await file.text(), file.name);
       const { record, added } = await db.importReport(report, file.name);
       const dup = record.count - added;
-      toast(`${file.name}: ${record.count} Messwerte${dup > 0 ? `, davon ${dup} bereits vorhanden` : ''}.`);
+      toast(t().imported(file.name, record.count, dup));
     } catch (e) {
       toast(`${file.name}: ${(e as Error).message}`, true);
     }
@@ -173,8 +175,8 @@ async function renderAll() {
 
   const empty = deviceSeries.every((s) => s.temp.length === 0);
   const notes: string[] = [];
-  if (empty) notes.push('Keine Messwerte im gewählten Zeitraum.');
-  if (settings.showNights && tooManyNights) notes.push(`Nächte werden nur bis ${NIGHTS_MAX_DAYS} Tage Zeitraum schattiert.`);
+  if (empty) notes.push(t().noReadingsInRange);
+  if (settings.showNights && tooManyNights) notes.push(t().nightsLimited(NIGHTS_MAX_DAYS));
 
   if (!settings.showWeather) {
     setStatus(notes.join(' '));
@@ -182,16 +184,16 @@ async function renderAll() {
   }
 
   const provider = providerById(settings.provider);
-  setStatus('Lade Wetterdaten …');
+  setStatus(t().loadingWeather);
   const weather = await loadWeather(provider, settings.location, from, to, (done, total) => {
-    if (seq === renderSeq && total > 1) setStatus(`Lade Wetterdaten … ${done}/${total} Monate`);
+    if (seq === renderSeq && total > 1) setStatus(t().loadingWeatherProgress(done, total));
   });
   if (seq !== renderSeq) return;
 
   const where = weather.station ? weather.station : settings.location.name;
   const weatherSeries: ChartSeries = {
     id: 'weather',
-    name: `Wetter ${where}`,
+    name: t().weatherSeries(where),
     color: cssColor('var(--weather)'),
     reference: true,
     temp: weather.points.map((p): Point => ({ ts: p.ts, v: p.temp })),
@@ -202,7 +204,7 @@ async function renderAll() {
   renderStats(deviceSeries, weatherSeries);
 
   if (weather.errors.length) {
-    notes.push(`Wetterdaten unvollständig (${weather.errors.length} Monat(e) nicht geladen${weather.points.length ? '' : ', offline?'}).`);
+    notes.push(t().weatherIncomplete(weather.errors.length, !weather.points.length));
     console.warn('Weather errors', weather.errors);
   }
   setStatus(notes.join(' '), weather.errors.length > 0);
@@ -219,21 +221,22 @@ function statBlock(label: string, s: Stats | null, unit: string, digits: number)
 }
 
 function renderStats(deviceSeries: ChartSeries[], weather: ChartSeries | null) {
-  const mode = humidityModes[settings.humidityMode];
+  const m = t();
+  const humUnit = humidityUnits[settings.humidityMode];
   const humDigits = settings.humidityMode === 'relative' ? 0 : 1;
-  const humLabel = { relative: 'Feuchte', absolute: 'Abs. F.', dewpoint: 'Taupunkt' }[settings.humidityMode];
+  const humLabel = { relative: m.statHumRelative, absolute: m.statHumAbsolute, dewpoint: m.statHumDewpoint }[settings.humidityMode];
   const withData = deviceSeries.filter((s) => s.temp.length || s.hum.length);
   const cards = [...withData, ...(weather ? [weather] : [])].map((s) => {
-    const t = stats(s.temp);
+    const temp = stats(s.temp);
     const h = stats(s.hum);
     return `<div class="card stat-card">
       <h3><span class="swatch" style="background:${s.color}"></span>${esc(s.name)}</h3>
       <div class="stat-grid">
-        <span></span><span class="head">Min</span><span class="head">Mittel</span><span class="head">Max</span>
-        ${statBlock('Temp.', t, '°C', 1)}
-        ${statBlock(humLabel, h, mode.unit, humDigits)}
+        <span></span><span class="head">${m.statMin}</span><span class="head">${m.statMean}</span><span class="head">${m.statMax}</span>
+        ${statBlock(m.statTemp, temp, '°C', 1)}
+        ${statBlock(humLabel, h, humUnit, humDigits)}
       </div>
-      <div class="stat-foot">${t ? `${t.n.toLocaleString('de-DE')} Werte` : 'Keine Werte'} · ${fmtDate(range.from)} – ${fmtDate(range.to)}</div>
+      <div class="stat-foot">${temp ? m.values(temp.n.toLocaleString(locale())) : m.noValues} · ${fmtDate(range.from)} – ${fmtDate(range.to)}</div>
     </div>`;
   });
   $('stats').innerHTML = cards.join('');
@@ -242,17 +245,17 @@ function renderStats(deviceSeries: ChartSeries[], weather: ChartSeries | null) {
 function renderDevices() {
   const el = $('devices');
   if (!devices.length) {
-    el.innerHTML = '<div class="list-empty">Noch keine Geräte.</div>';
+    el.innerHTML = `<div class="list-empty">${t().noDevices}</div>`;
     return;
   }
   el.innerHTML = devices
     .map(
       (d) => `<div class="list-row" data-serial="${esc(d.serial)}">
-        <label class="switch" title="Im Graph anzeigen"><input type="checkbox" data-act="visible" ${d.visible ? 'checked' : ''} /></label>
+        <label class="switch" title="${t().showInChart}"><input type="checkbox" data-act="visible" ${d.visible ? 'checked' : ''} /></label>
         <span class="swatch" style="background:${seriesColor(d.slot)}"></span>
         <div class="list-main">
-          <input type="text" data-act="name" value="${esc(d.name)}" aria-label="Gerätename" />
-          <div class="list-sub">${esc(d.model)} · Seriennr. ${esc(d.serial)}</div>
+          <input type="text" data-act="name" value="${esc(d.name)}" aria-label="${t().deviceName}" />
+          <div class="list-sub">${esc(d.model)} · ${t().serialNo} ${esc(d.serial)}</div>
         </div>
       </div>`,
     )
@@ -262,7 +265,7 @@ function renderDevices() {
 function renderImports() {
   const el = $('imports');
   if (!imports.length) {
-    el.innerHTML = '<div class="list-empty">Noch nichts importiert.</div>';
+    el.innerHTML = `<div class="list-empty">${t().nothingImported}</div>`;
     return;
   }
   const names = new Map(devices.map((d) => [d.serial, d.name || d.serial]));
@@ -273,16 +276,16 @@ function renderImports() {
         .sort((a, b) => a - b)
         .map(
           (o) =>
-            `<option value="${o}" ${o === i.tzOffsetMin ? 'selected' : ''}>${offsetLabel(o)}${o === i.fileTzOffsetMin ? ' (Datei)' : ''}</option>`,
+            `<option value="${o}" ${o === i.tzOffsetMin ? 'selected' : ''}>${offsetLabel(o)}${o === i.fileTzOffsetMin ? t().fromFile : ''}</option>`,
         )
         .join('');
       return `<div class="list-row" data-id="${i.id}">
         <div class="list-main">
           <div class="list-title" title="${esc(i.fileName)}">${esc(i.fileName)}</div>
-          <div class="list-sub">${esc(names.get(i.serial) ?? i.serial)} · ${fmtDateTime(i.first)} – ${fmtDateTime(i.last)} · ${i.count.toLocaleString('de-DE')} Werte${i.interval ? ` · alle ${esc(i.interval)}` : ''}</div>
+          <div class="list-sub">${esc(names.get(i.serial) ?? i.serial)} · ${fmtDateTime(i.first)} – ${fmtDateTime(i.last)} · ${t().values(i.count.toLocaleString(locale()))}${i.interval ? ` · ${t().every(esc(i.interval))}` : ''}</div>
         </div>
-        <select data-act="offset" title="Zeitbasis der Gerätezeit. Nur ändern, wenn die Uhrzeiten verschoben wirken.">${opts}</select>
-        <button class="btn small danger" data-act="delete" type="button">Entfernen</button>
+        <select data-act="offset" title="${t().timeBaseHint}">${opts}</select>
+        <button class="btn small danger" data-act="delete" type="button">${t().remove}</button>
       </div>`;
     })
     .join('');
@@ -293,6 +296,10 @@ function renderImports() {
 const dialog = $<HTMLDialogElement>('settings');
 
 async function openSettings() {
+  const languageSelect = $<HTMLSelectElement>('language');
+  languageSelect.querySelectorAll('option:not([value=auto])').forEach((o) => o.remove());
+  for (const [code, name] of Object.entries(languageNames)) languageSelect.add(new Option(name, code));
+  languageSelect.value = settings.language;
   $<HTMLInputElement>('loc-name').value = settings.location.name;
   $<HTMLInputElement>('loc-lat').value = String(settings.location.lat);
   $<HTMLInputElement>('loc-lon').value = String(settings.location.lon);
@@ -310,14 +317,14 @@ async function openSettings() {
 
 async function updateCacheInfo() {
   const n = await db.weatherCacheSize();
-  $('cache-info').textContent = n ? `${n} Monat(e) Wetterdaten zwischengespeichert.` : 'Der Cache ist leer.';
+  $('cache-info').textContent = n ? t().cacheInfo(n) : t().cacheEmpty;
 }
 
 async function runPlaceSearch() {
   const q = $<HTMLInputElement>('place-query').value.trim();
   if (!q) return;
   const out = $('place-results');
-  out.innerHTML = '<span class="muted">Suche …</span>';
+  out.innerHTML = `<span class="muted">${t().searching}</span>`;
   try {
     const results = await searchPlace(q);
     out.innerHTML = results.length
@@ -327,7 +334,7 @@ async function runPlaceSearch() {
               `<button type="button" data-i="${i}">${esc(r.name)}<small>${esc(r.detail)} · ${r.lat}, ${r.lon}</small></button>`,
           )
           .join('')
-      : '<span class="muted">Nichts gefunden.</span>';
+      : `<span class="muted">${t().nothingFound}</span>`;
     out.querySelectorAll<HTMLButtonElement>('button').forEach((b) =>
       b.addEventListener('click', () => {
         const r = results[Number(b.dataset.i)];
@@ -338,7 +345,7 @@ async function runPlaceSearch() {
       }),
     );
   } catch (e) {
-    out.innerHTML = `<span class="muted">Suche fehlgeschlagen: ${esc((e as Error).message)}</span>`;
+    out.innerHTML = `<span class="muted">${esc(t().searchFailed((e as Error).message))}</span>`;
   }
 }
 
@@ -348,10 +355,15 @@ function applySettingsDialog() {
   if (Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
     settings.location = { name: $<HTMLInputElement>('loc-name').value.trim() || `${lat}, ${lon}`, lat, lon };
   } else {
-    toast('Ungültige Koordinaten, Standort nicht geändert.', true);
+    toast(t().invalidCoords, true);
   }
   const p = dialog.querySelector<HTMLInputElement>('input[name=provider]:checked');
   if (p) settings.provider = p.value;
+  const language = $<HTMLSelectElement>('language').value as LangSetting;
+  if (language !== settings.language) {
+    settings.language = language;
+    applyLanguage();
+  }
   persist();
 }
 
@@ -361,6 +373,14 @@ function persist() {
   saveSettings(settings);
   updateAttribution();
   void renderAll();
+}
+
+/** Switches the UI language; dynamic parts are redrawn by the following persist()/renderAll(). */
+function applyLanguage() {
+  setLanguage(settings.language);
+  translateDocument();
+  renderDevices();
+  renderImports();
 }
 
 function updateAttribution() {
@@ -426,11 +446,11 @@ function bindControls() {
     void renderAll();
   });
   $('imports').addEventListener('click', async (e) => {
-    const t = e.target as HTMLElement;
-    if (t.dataset.act !== 'delete') return;
-    const id = t.closest<HTMLElement>('[data-id]')?.dataset.id;
+    const target = e.target as HTMLElement;
+    if (target.dataset.act !== 'delete') return;
+    const id = target.closest<HTMLElement>('[data-id]')?.dataset.id;
     const rec = imports.find((i) => i.id === id);
-    if (!rec || !confirm(`„${rec.fileName}“ und die zugehörigen Messwerte entfernen?`)) return;
+    if (!rec || !confirm(t().confirmRemove(rec.fileName))) return;
     await db.deleteImport(rec.id);
     await reloadMeta();
     void renderAll();
@@ -446,7 +466,7 @@ function bindControls() {
   });
   $('cache-clear').addEventListener('click', async () => {
     const n = await db.clearWeatherCache();
-    toast(`${n} Monat(e) aus dem Wetter-Cache entfernt.`);
+    toast(t().cacheCleared(n));
     void updateCacheInfo();
   });
   dialog.addEventListener('close', () => {
@@ -488,6 +508,7 @@ function bindControls() {
 }
 
 async function init() {
+  translateDocument();
   bindControls();
   updateAttribution();
   await reloadMeta();

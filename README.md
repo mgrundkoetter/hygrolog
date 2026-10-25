@@ -1,120 +1,125 @@
 # Hygrolog
 
-Eine kleine, freie Auswertungs-App für **Elitech-RC-Temperatur- und Feuchtelogger** (getestet mit dem RC-4H Pro). Die Messwerte erscheinen in einem interaktiven Graphen über beliebige Zeiträume, zusammen mit **Wetterdaten** (Temperatur und Luftfeuchte) und **Sonnenauf-/-untergang** für einen frei wählbaren Ort.
+**English** · [Deutsch](README.de.md)
 
-- Import der CSV-Berichte, die der Logger selbst auf sein USB-Laufwerk schreibt. Treiber oder Hersteller-Software sind nicht nötig.
-- Zeitraum per Datepicker (von/bis) oder per Schnellwahl (1 T … 1 J, Alles), dazu Zoom mit Mausrad bzw. Schieber
-- Auflösung automatisch oder fest: alle Messwerte, Stundenmittel, Tagesmittel mit Min/Max-Band
-- Feuchte wahlweise **relativ (%)**, **absolut (g/m³)** oder als **Taupunkt**. So lässt sich z. B. für den Keller ablesen, ob Lüften die Luft trockener oder feuchter macht.
-- Nächte werden im Graphen schattiert, Sonnenzeiten stehen im Tooltip
-- Mehrere Logger lassen sich parallel nutzen, Geräte können umbenannt werden
-- Mehrfaches Importieren derselben Aufzeichnung ist unproblematisch, doppelte Messpunkte werden zusammengeführt
-- Alles bleibt lokal: Messdaten und Wetter-Cache liegen in der App (IndexedDB). Ins Netz gehen nur die Wetteranfragen.
+A small, free viewer for **Elitech RC temperature and humidity data loggers** (tested with the RC-4H Pro). Measurements are shown in an interactive chart over any time range, together with **weather data** (temperature and humidity) and **sunrise/sunset** for a location of your choice.
 
-## Wetterdaten
+- Imports the CSV reports the logger writes to its own USB drive. No drivers or vendor software needed.
+- Pick a time range with the date picker (from/to) or a quick selection (1 d … 1 y, all), and zoom with the mouse wheel or slider
+- Automatic or fixed resolution: all readings, hourly means, daily means with a min/max band
+- Humidity as **relative (%)**, **absolute (g/m³)** or **dew point**. For a basement, for example, this tells you whether airing out makes the air drier or damper.
+- Nights are shaded in the chart, sun times are shown in the tooltip
+- Several loggers can be used side by side, and devices can be renamed
+- Importing the same recording more than once is harmless: duplicate readings are merged
+- Everything stays local: measurements and the weather cache live in the app (IndexedDB). Only weather requests go over the network.
 
-| Quelle | Daten | Abdeckung |
+- User interface in English and German: detected automatically from the system language, switchable in the settings
+
+## Weather data
+
+| Source | Data | Coverage |
 |---|---|---|
-| **DWD via [Bright Sky](https://brightsky.dev/)** (Standard) | Stündliche Messwerte der nächstgelegenen DWD-Station, für Malter z. B. *Dippoldiswalde-Reinberg* (≈ 4 km) | Deutschland, ab 2010 |
-| **[Open-Meteo](https://open-meteo.com/)** | Reanalyse-/Modelldaten im ~10-km-Raster | weltweit, ab 1940 |
+| **DWD via [Bright Sky](https://brightsky.dev/)** (default) | Hourly observations from the nearest DWD station, e.g. *Dippoldiswalde-Reinberg* (≈ 4 km) for Malter | Germany, from 2010 |
+| **[Open-Meteo](https://open-meteo.com/)** | Reanalysis/model data on a ~10 km grid | worldwide, from 1940 |
 
-Beide Quellen sind offen und brauchen keinen API-Schlüssel. Die Daten werden pro Monat zwischengespeichert. Monate, die mehr als eine Woche zurückliegen, werden nie wieder geladen. Den laufenden Monat aktualisiert die App höchstens alle 3 Stunden. Sonnenauf- und -untergang werden lokal berechnet (Bibliothek [SunCalc](https://github.com/mourner/suncalc)).
+Both sources are open and need no API key. Data is cached per month. Months more than a week in the past are never fetched again, and the current month is refreshed at most every 3 hours. Sunrise and sunset are computed locally (using [SunCalc](https://github.com/mourner/suncalc)).
 
-## Benutzung
+## Usage
 
-1. Logger per USB anschließen. Er erscheint als Laufwerk (z. B. `RC-4HPro`) mit einer PDF- und einer CSV-Datei.
-2. Die **CSV-Datei** in das App-Fenster ziehen oder über **CSV importieren** auswählen.
-3. Ort und Wetterquelle über das Zahnrad einstellen. Voreingestellt ist Malter (Dippoldiswalde).
+1. Connect the logger via USB. It shows up as a drive (e.g. `RC-4HPro`) containing a PDF and a CSV file.
+2. Drag the **CSV file** into the app window or choose it via **Import CSV**.
+3. Set location and weather source via the gear icon. The default is Malter (Dippoldiswalde, Saxony).
 
-> **Zeitbasis:** Die CSV enthält die Zeitzone, mit der der Logger konfiguriert wurde (`Time Base: UTC+00:00`). Wirken die Kurven gegenüber dem Wetter um ein oder zwei Stunden verschoben, lässt sich die Zeitbasis in der Liste *Importierte Dateien* pro Datei korrigieren.
+> **Time base:** The CSV contains the time zone the logger was configured with (`Time Base: UTC+00:00`). If the curves look shifted by an hour or two compared to the weather, you can correct the time base per file in the *Imported files* list.
 
-## Installation (Download)
+## Installation (download)
 
-Fertige Pakete stehen unter *Releases*: `.dmg` für macOS (Apple Silicon und Intel), `.msi`/`.exe` für Windows, `.AppImage`/`.deb` für Linux.
+Ready-made packages are available under *Releases*: `.dmg` for macOS (Apple Silicon and Intel), `.msi`/`.exe` for Windows, `.AppImage`/`.deb` for Linux.
 
-Die Pakete sind nicht signiert, weil Signaturzertifikate Geld kosten. Beim ersten Start fragt das System deshalb nach:
+The packages are not signed, because signing certificates cost money. The operating system will therefore ask for confirmation on first launch:
 
-- **macOS:** Rechtsklick auf die App → *Öffnen* → *Öffnen*. Falls macOS meldet, die App sei „beschädigt“: `xattr -dr com.apple.quarantine /Applications/Hygrolog.app`
-- **Windows:** SmartScreen → *Weitere Informationen* → *Trotzdem ausführen*
+- **macOS:** Right-click the app → *Open* → *Open*. If macOS says the app is "damaged": `xattr -dr com.apple.quarantine /Applications/Hygrolog.app`
+- **Windows:** SmartScreen → *More info* → *Run anyway*
 
-Alternativ läuft dieselbe App auch im Browser, z. B. kostenlos über GitHub Pages (siehe unten).
+The same app also runs in the browser, e.g. for free via GitHub Pages (see below).
 
-## Entwicklung
+## Development
 
-Voraussetzungen: Node.js ≥ 20. Für die Desktop-App zusätzlich Rust ≥ 1.90 (`rustup update stable`) und die [Tauri-Voraussetzungen](https://v2.tauri.app/start/prerequisites/).
+Requirements: Node.js ≥ 20. For the desktop app additionally Rust ≥ 1.90 (`rustup update stable`) and the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/).
 
 ```bash
 npm install
-npm run dev          # Web-Version unter http://localhost:5173
-npm test             # Unit-Tests (Parser, Feuchte-Umrechnung, Aggregation)
-npm run build        # statische Web-Version nach dist/
+npm run dev          # web version at http://localhost:5173
+npm test             # unit tests (parser, humidity conversion, aggregation)
+npm run build        # static web version into dist/
 
-npm run tauri dev    # Desktop-App im Entwicklungsmodus
-npm run tauri build  # Installer für das aktuelle Betriebssystem
+npm run tauri dev    # desktop app in development mode
+npm run tauri build  # installer for the current operating system
 ```
 
-### Veröffentlichen ohne Hostingkosten
+### Publishing without hosting costs
 
-- **Installer:** Ein Tag pushen (`git tag v0.1.0 && git push --tags`). Der Workflow `.github/workflows/release.yml` baut auf GitHub Actions die Pakete für alle drei Betriebssysteme und legt einen Release-Entwurf an.
-- **Web-Version:** Unter *Settings → Pages* als Quelle „GitHub Actions“ wählen. Danach veröffentlicht `.github/workflows/pages.yml` jeden Push auf `main`.
+- **Installers:** Push a tag (`git tag v0.1.0 && git push --tags`). The workflow `.github/workflows/release.yml` builds packages for all three operating systems on GitHub Actions and creates a draft release.
+- **Web version:** Under *Settings → Pages*, select "GitHub Actions" as the source. After that, `.github/workflows/pages.yml` publishes every push to `main`.
 
-### Aufbau
+### Structure
 
 ```
-src/parser.ts     CSV-Parser für Elitech-Berichte (Kopfbereich + Date,Time,Temperature,Humidity)
-src/db.ts         IndexedDB: Messwerte, Importe, Geräte, Wetter-Cache
-src/weather.ts    Wetterquellen (Bright Sky, Open-Meteo), Monats-Cache, Ortssuche
-src/sun.ts        Sonnenzeiten und Nachtintervalle
-src/humidity.ts   Taupunkt / absolute Feuchte (Magnus-Formel)
-src/aggregate.ts  Stunden-/Tagesmittel, Lückenerkennung, Statistik
-src/chart.ts      Graph (Apache ECharts)
-src/main.ts       Oberfläche
-src-tauri/        Desktop-Hülle (Tauri 2)
+src/parser.ts     CSV parser for Elitech reports (header + Date,Time,Temperature,Humidity)
+src/db.ts         IndexedDB: readings, imports, devices, weather cache
+src/weather.ts    weather sources (Bright Sky, Open-Meteo), monthly cache, location search
+src/sun.ts        sun times and night intervals
+src/humidity.ts   dew point / absolute humidity (Magnus formula)
+src/aggregate.ts  hourly/daily means, gap detection, statistics
+src/chart.ts      chart (Apache ECharts)
+src/i18n.ts       UI strings (English, German) and language detection
+src/main.ts       user interface
+src-tauri/        desktop shell (Tauri 2)
 ```
 
-Weitere Elitech-Modelle (RC-4 Pro, RC-5+, …) schreiben dasselbe CSV-Format und sollten deshalb ebenfalls funktionieren. Über Beispieldateien anderer Modelle freue ich mich.
+Other Elitech models (RC-4 Pro, RC-5+, …) write the same CSV format and should work as well. Sample files from other models are very welcome.
 
-## TODO: Gerät direkt per USB konfigurieren
+## TODO: Configure the device directly via USB
 
-Ziel: Hygrolog soll den Logger selbst konfigurieren können (Intervall, Startmodus, Grenzwerte, Zeitzone, Uhrzeit vom Rechner übernehmen), damit die Hersteller-App gar nicht mehr nötig ist. Als Bonus: Messwerte direkt per USB auslesen statt über die CSV-Datei.
+Goal: Hygrolog should be able to configure the logger itself (interval, start mode, alarm limits, time zone, set the clock from the computer), so the vendor app is no longer needed at all. Bonus: read measurements directly via USB instead of through the CSV file.
 
-**Bisherige Erkenntnisse (aus ElitechLog V8.3.5 / 13.2.4 für macOS, nur lesend analysiert):**
+**Findings so far (from ElitechLog V8.3.5 / 13.2.4 for macOS, read-only analysis):**
 
-- Die Pro-Modelle melden sich per USB als Laufwerk (PDF/CSV) **und zusätzlich als HID-Gerät**. ElitechLog nutzt dafür [hidapi](https://github.com/libusb/hidapi). Ältere RC-4/RC-5 ohne „Pro“ nutzen dagegen eine serielle Schnittstelle ([elitech-datareader](https://pypi.org/project/elitech-datareader/)), das ist ein anderes Protokoll.
-- Paketaufbau (aus `initializePacket:withCmd:withExtCmd:withAddr:withLen:withData:dataLen:`):
+- The Pro models present themselves via USB as a drive (PDF/CSV) **and additionally as a HID device**. ElitechLog uses [hidapi](https://github.com/libusb/hidapi) for this. Older RC-4/RC-5 models without "Pro" use a serial interface instead ([elitech-datareader](https://pypi.org/project/elitech-datareader/)), which is a different protocol.
+- Packet layout (from `initializePacket:withCmd:withExtCmd:withAddr:withLen:withData:dataLen:`):
 
-  | Byte | Inhalt |
+  | Byte | Content |
   |---|---|
-  | 0–1 | `33 CC` (Kennung) |
+  | 0–1 | `33 CC` (magic) |
   | 2 | `00` |
-  | 3 | Paketlänge = Datenlänge + 12 |
-  | 4 | Befehl (`cmd`) |
-  | 5 | Unterbefehl (`extCmd`) |
+  | 3 | packet length = data length + 12 |
+  | 4 | command (`cmd`) |
+  | 5 | sub-command (`extCmd`) |
   | 6 | `00` |
-  | 7–8 | Adresse, big-endian |
-  | 9–10 | Länge, big-endian |
-  | 11 … | Nutzdaten |
-  | letztes | Prüfsumme: Summe aller vorherigen Bytes, 8 Bit |
+  | 7–8 | address, big-endian |
+  | 9–10 | length, big-endian |
+  | 11 … | payload |
+  | last | checksum: sum of all previous bytes, 8 bit |
 
-- Noch unbekannt: die Befehlsnummern (Geräteinfo, Konfiguration lesen/schreiben, Uhrzeit, Daten lesen), die Kodierung der Konfiguration, die Antwortpakete, VID/PID und die HID-Reportgröße.
+- Still unknown: the command numbers (device info, read/write configuration, clock, read data), the configuration encoding, the response packets, VID/PID and the HID report size.
 
-**Nächster Schritt: Mitschnitt mit echtem Gerät**
+**Next step: capture traffic with a real device**
 
-1. Das normale ElitechLog beenden.
-2. `tools/hidspy/capture.sh` starten. Das Skript erzeugt eine ad-hoc signierte Kopie von ElitechLog mit einem kleinen HID-Protokollierer (das Original bleibt unverändert) und schreibt alle Pakete nach `tools/hidspy/hid.log`.
-3. Logger anstecken und warten, bis die Geräteinfos erscheinen.
-4. In **Konfigurieren** Werte einstellen und **„Parameter“** klicken. ⚠️ Das löscht die laufende Aufzeichnung auf dem Gerät, deshalb vorher die CSV vom Laufwerk sichern.
-5. Optional: Daten auslesen bzw. „Daten neu“, damit auch der Lesebefehl im Mitschnitt landet.
-6. App schließen und `hid.log` auswerten.
+1. Quit the regular ElitechLog.
+2. Run `tools/hidspy/capture.sh`. The script creates an ad-hoc signed copy of ElitechLog with a small HID logger injected (the original stays untouched) and writes all packets to `tools/hidspy/hid.log`.
+3. Plug in the logger and wait until the device info appears.
+4. Under **Configure**, set values and click **"Parameter"**. ⚠️ This erases the running recording on the device, so back up the CSV from the drive first.
+5. Optional: read data or use "new data" so the read command ends up in the capture as well.
+6. Close the app and analyse `hid.log`.
 
-**Umsetzung danach:**
+**Implementation afterwards:**
 
-- Rust-Seite (Tauri) mit dem Crate `hidapi`: Befehle als Tauri-Commands (`device_info`, `read_config`, `write_config`, `sync_time`, ggf. `read_records`)
-- UI-Bereich „Gerät“: Live-Infos (Uhrzeit, Batterie, Status, Messwerte) und Konfigurationsformular, mit deutlicher Warnung, dass Speichern die Aufzeichnung löscht
-- Optional für die Browser-Version: WebHID (nur Chrome/Edge)
-- Linux: udev-Regel für den HID-Zugriff dokumentieren
-- Tests mit aufgezeichneten Paketen als Fixtures
+- Rust side (Tauri) using the `hidapi` crate: commands as Tauri commands (`device_info`, `read_config`, `write_config`, `sync_time`, possibly `read_records`)
+- "Device" section in the UI: live info (clock, battery, status, readings) and a configuration form, with a clear warning that saving erases the recording
+- Optional for the browser version: WebHID (Chrome/Edge only)
+- Linux: document a udev rule for HID access
+- Tests with recorded packets as fixtures
 
-## Lizenz
+## License
 
-MIT. Elitech ist eine Marke ihres jeweiligen Inhabers. Dieses Projekt ist unabhängig und steht in keiner Verbindung zum Hersteller.
+MIT. Elitech is a trademark of its respective owner. This project is independent and not affiliated with the manufacturer.

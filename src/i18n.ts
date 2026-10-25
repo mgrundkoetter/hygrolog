@@ -1,0 +1,269 @@
+// UI strings. English is the source of truth; every other language must provide the same keys.
+
+const en = {
+  // static page (index.html, via data-i18n attributes)
+  metaDescription: 'Viewer for Elitech RC temperature and humidity loggers with weather data for comparison.',
+  brandSub: 'Viewer for Elitech RC loggers',
+  importCsv: 'Import CSV',
+  settings: 'Settings',
+  emptyTitle: 'No measurements yet',
+  emptyStep1: 'Connect the logger via USB. It shows up as a drive, e.g. <b>RC-4HPro</b>.',
+  emptyStep2: 'Drag the <b>CSV file</b> (e.g. <code>EFX267100110-0000001.csv</code>) here or choose it via <b>Import CSV</b>.',
+  emptyStep3: 'Done. The data stays stored locally on this computer.',
+  emptyHint: 'You can import the same recording again later: duplicate readings are merged.',
+  chooseCsv: 'Choose CSV file',
+  from: 'From',
+  to: 'To',
+  timeRange: 'Time range',
+  presetDay: '1 d',
+  presetWeek: '7 d',
+  presetMonth: '30 d',
+  presetQuarter: '90 d',
+  presetYear: '1 y',
+  presetAll: 'All',
+  resolution: 'Resolution',
+  resAuto: 'Automatic',
+  resRaw: 'All readings',
+  resHour: 'Hourly mean',
+  resDay: 'Daily mean with min/max',
+  humidityAs: 'Humidity as',
+  humRelativeOption: 'relative humidity (%)',
+  humAbsoluteOption: 'absolute humidity (g/m³)',
+  humDewpointOption: 'dew point (°C)',
+  weather: 'Weather',
+  shadeNights: 'Shade nights',
+  devices: 'Devices',
+  importedFiles: 'Imported files',
+  footerWeather: 'Weather data:',
+  footerSun: 'Sun times are computed locally',
+  footerLocal: 'All data stays on this device',
+  close: 'Close',
+  language: 'Language',
+  languageAuto: 'Automatic (system language)',
+  locationLegend: 'Location for weather & sun times',
+  placeSearchPlaceholder: 'Search place, e.g. Dippoldiswalde',
+  search: 'Search',
+  locName: 'Name',
+  locLat: 'Latitude',
+  locLon: 'Longitude',
+  weatherSource: 'Weather source',
+  weatherCache: 'Weather cache',
+  clearCache: 'Clear cache',
+  apply: 'Apply',
+  dropHere: 'Drop CSV files here',
+
+  // dynamic
+  pickCsvOnly: 'Please choose the logger’s CSV files (the PDF file contains no importable raw data).',
+  imported: (file: string, n: number, dup: number) =>
+    `${file}: ${n} readings${dup > 0 ? `, ${dup} of them already present` : ''}.`,
+  noReadingsInRange: 'No readings in the selected time range.',
+  nightsLimited: (days: number) => `Nights are only shaded for ranges up to ${days} days.`,
+  loadingWeather: 'Loading weather data …',
+  loadingWeatherProgress: (done: number, total: number) => `Loading weather data … ${done}/${total} months`,
+  weatherSeries: (where: string) => `Weather ${where}`,
+  weatherIncomplete: (months: number, offline: boolean) =>
+    `Weather data incomplete (${months} month${months === 1 ? '' : 's'} not loaded${offline ? ', offline?' : ''}).`,
+  statMin: 'Min',
+  statMean: 'Mean',
+  statMax: 'Max',
+  statTemp: 'Temp.',
+  statHumRelative: 'Humidity',
+  statHumAbsolute: 'Abs. hum.',
+  statHumDewpoint: 'Dew point',
+  values: (n: string) => `${n} values`,
+  noValues: 'No values',
+  noDevices: 'No devices yet.',
+  showInChart: 'Show in chart',
+  deviceName: 'Device name',
+  serialNo: 'Serial no.',
+  nothingImported: 'Nothing imported yet.',
+  fromFile: ' (file)',
+  every: (interval: string) => `every ${interval}`,
+  timeBaseHint: 'Time base of the device clock. Only change it if the times look shifted.',
+  remove: 'Remove',
+  confirmRemove: (file: string) => `Remove “${file}” and its readings?`,
+  cacheInfo: (n: number) => `${n} month${n === 1 ? '' : 's'} of weather data cached.`,
+  cacheEmpty: 'The cache is empty.',
+  searching: 'Searching …',
+  nothingFound: 'Nothing found.',
+  searchFailed: (msg: string) => `Search failed: ${msg}`,
+  invalidCoords: 'Invalid coordinates, location not changed.',
+  cacheCleared: (n: number) => `Removed ${n} month${n === 1 ? '' : 's'} from the weather cache.`,
+
+  // chart
+  axisTemp: 'Temperature (°C)',
+  axisHumRelative: 'Rel. humidity (%)',
+  axisHumAbsolute: 'Abs. humidity (g/m³)',
+  axisHumDewpoint: 'Dew point (°C)',
+  sunrise: 'Sunrise',
+  sunset: 'Sunset',
+
+  // weather providers
+  brightSkyLabel: 'DWD station data (Bright Sky)',
+  brightSkyDescription: 'Observations from the nearest station of the German Weather Service, from 2010. Germany only.',
+  brightSkyAttribution: 'Deutscher Wetterdienst, via Bright Sky',
+  openMeteoLabel: 'Open-Meteo (model data)',
+  openMeteoDescription: 'Reanalysis and model data on a ~10 km grid, worldwide, from 1940. Good for places without a nearby DWD station.',
+
+  // parser
+  parseNoTable: 'No data table found (expected a line “Date,Time,Temperature,…”).',
+  parseNoColumns: 'Found neither a temperature nor a humidity column.',
+  parseNoRows: 'The file contains no readings.',
+};
+
+export type Messages = typeof en;
+
+const de: Messages = {
+  metaDescription: 'Auswertung von Elitech-RC-Temperatur- und Feuchteloggern mit Wetterdaten zum Vergleich.',
+  brandSub: 'Auswertung für Elitech-RC-Logger',
+  importCsv: 'CSV importieren',
+  settings: 'Einstellungen',
+  emptyTitle: 'Noch keine Messdaten',
+  emptyStep1: 'Logger per USB anschließen. Er erscheint als Laufwerk, z.&nbsp;B. <b>RC-4HPro</b>.',
+  emptyStep2: 'Die <b>CSV-Datei</b> (z.&nbsp;B. <code>EFX267100110-0000001.csv</code>) hierher ziehen oder über <b>CSV importieren</b> auswählen.',
+  emptyStep3: 'Fertig. Die Daten bleiben lokal auf diesem Rechner gespeichert.',
+  emptyHint: 'Du kannst dieselbe Aufzeichnung später noch einmal importieren: doppelte Messpunkte werden zusammengeführt.',
+  chooseCsv: 'CSV-Datei auswählen',
+  from: 'Von',
+  to: 'Bis',
+  timeRange: 'Zeitraum',
+  presetDay: '1 T',
+  presetWeek: '7 T',
+  presetMonth: '30 T',
+  presetQuarter: '90 T',
+  presetYear: '1 J',
+  presetAll: 'Alles',
+  resolution: 'Auflösung',
+  resAuto: 'Automatisch',
+  resRaw: 'Alle Messwerte',
+  resHour: 'Stundenmittel',
+  resDay: 'Tagesmittel mit Min/Max',
+  humidityAs: 'Feuchte als',
+  humRelativeOption: 'relative Feuchte (%)',
+  humAbsoluteOption: 'absolute Feuchte (g/m³)',
+  humDewpointOption: 'Taupunkt (°C)',
+  weather: 'Wetter',
+  shadeNights: 'Nächte schattieren',
+  devices: 'Geräte',
+  importedFiles: 'Importierte Dateien',
+  footerWeather: 'Wetterdaten:',
+  footerSun: 'Sonnenzeiten werden lokal berechnet',
+  footerLocal: 'Alle Daten bleiben auf diesem Gerät',
+  close: 'Schließen',
+  language: 'Sprache',
+  languageAuto: 'Automatisch (Systemsprache)',
+  locationLegend: 'Standort für Wetter & Sonnenzeiten',
+  placeSearchPlaceholder: 'Ort suchen, z. B. Dippoldiswalde',
+  search: 'Suchen',
+  locName: 'Name',
+  locLat: 'Breite',
+  locLon: 'Länge',
+  weatherSource: 'Wetterquelle',
+  weatherCache: 'Wetter-Cache',
+  clearCache: 'Cache leeren',
+  apply: 'Übernehmen',
+  dropHere: 'CSV-Dateien hier ablegen',
+
+  pickCsvOnly: 'Bitte CSV-Dateien des Loggers auswählen (die PDF-Datei enthält keine importierbaren Rohdaten).',
+  imported: (file, n, dup) => `${file}: ${n} Messwerte${dup > 0 ? `, davon ${dup} bereits vorhanden` : ''}.`,
+  noReadingsInRange: 'Keine Messwerte im gewählten Zeitraum.',
+  nightsLimited: (days) => `Nächte werden nur bis ${days} Tage Zeitraum schattiert.`,
+  loadingWeather: 'Lade Wetterdaten …',
+  loadingWeatherProgress: (done, total) => `Lade Wetterdaten … ${done}/${total} Monate`,
+  weatherSeries: (where) => `Wetter ${where}`,
+  weatherIncomplete: (months, offline) =>
+    `Wetterdaten unvollständig (${months} ${months === 1 ? 'Monat' : 'Monate'} nicht geladen${offline ? ', offline?' : ''}).`,
+  statMin: 'Min',
+  statMean: 'Mittel',
+  statMax: 'Max',
+  statTemp: 'Temp.',
+  statHumRelative: 'Feuchte',
+  statHumAbsolute: 'Abs. F.',
+  statHumDewpoint: 'Taupunkt',
+  values: (n) => `${n} Werte`,
+  noValues: 'Keine Werte',
+  noDevices: 'Noch keine Geräte.',
+  showInChart: 'Im Graph anzeigen',
+  deviceName: 'Gerätename',
+  serialNo: 'Seriennr.',
+  nothingImported: 'Noch nichts importiert.',
+  fromFile: ' (Datei)',
+  every: (interval) => `alle ${interval}`,
+  timeBaseHint: 'Zeitbasis der Gerätezeit. Nur ändern, wenn die Uhrzeiten verschoben wirken.',
+  remove: 'Entfernen',
+  confirmRemove: (file) => `„${file}“ und die zugehörigen Messwerte entfernen?`,
+  cacheInfo: (n) => `${n} ${n === 1 ? 'Monat' : 'Monate'} Wetterdaten zwischengespeichert.`,
+  cacheEmpty: 'Der Cache ist leer.',
+  searching: 'Suche …',
+  nothingFound: 'Nichts gefunden.',
+  searchFailed: (msg) => `Suche fehlgeschlagen: ${msg}`,
+  invalidCoords: 'Ungültige Koordinaten, Standort nicht geändert.',
+  cacheCleared: (n) => `${n} ${n === 1 ? 'Monat' : 'Monate'} aus dem Wetter-Cache entfernt.`,
+
+  axisTemp: 'Temperatur (°C)',
+  axisHumRelative: 'Rel. Feuchte (%)',
+  axisHumAbsolute: 'Abs. Feuchte (g/m³)',
+  axisHumDewpoint: 'Taupunkt (°C)',
+  sunrise: 'Sonnenaufgang',
+  sunset: 'Sonnenuntergang',
+
+  brightSkyLabel: 'DWD-Stationsdaten (Bright Sky)',
+  brightSkyDescription: 'Messwerte der nächstgelegenen Station des Deutschen Wetterdienstes, ab 2010. Nur Deutschland.',
+  brightSkyAttribution: 'Deutscher Wetterdienst, via Bright Sky',
+  openMeteoLabel: 'Open-Meteo (Modelldaten)',
+  openMeteoDescription: 'Reanalyse- und Modelldaten im ~10-km-Raster, weltweit, ab 1940. Gut für Orte ohne nahe DWD-Station.',
+
+  parseNoTable: 'Keine Datentabelle gefunden (erwartet: Zeile „Date,Time,Temperature,…“).',
+  parseNoColumns: 'Weder Temperatur- noch Feuchtespalte gefunden.',
+  parseNoRows: 'Die Datei enthält keine Messwerte.',
+};
+
+const dictionaries = { en, de } satisfies Record<string, Messages>;
+
+export type Lang = keyof typeof dictionaries;
+export type LangSetting = Lang | 'auto';
+
+/** Native names, shown in the language picker regardless of the current UI language. */
+export const languageNames: Record<Lang, string> = { en: 'English', de: 'Deutsch' };
+
+const locales: Record<Lang, string> = { en: 'en-GB', de: 'de-DE' };
+
+let current: Lang = 'en';
+
+/** First of the user's preferred languages (browser or OS setting) that we support, else English. */
+export function detectLanguage(): Lang {
+  const prefs = typeof navigator === 'undefined' ? [] : navigator.languages?.length ? navigator.languages : [navigator.language];
+  for (const tag of prefs) {
+    const base = tag?.toLowerCase().split('-')[0];
+    if (base && base in dictionaries) return base as Lang;
+  }
+  return 'en';
+}
+
+export function setLanguage(setting: LangSetting): Lang {
+  current = setting === 'auto' ? detectLanguage() : setting;
+  return current;
+}
+
+export const lang = () => current;
+/** BCP 47 tag for number and date formatting. */
+export const locale = () => locales[current];
+/** Messages in the current language. */
+export const t = (): Messages => dictionaries[current];
+
+/**
+ * Fills static markup: data-i18n sets text, data-i18n-html sets trusted markup from the dictionary,
+ * data-i18n-attr="attr:key;attr:key" sets attributes.
+ */
+export function translateDocument(root: ParentNode = document): void {
+  const m = t() as unknown as Record<string, string>;
+  root.querySelectorAll<HTMLElement>('[data-i18n]').forEach((el) => (el.textContent = m[el.dataset.i18n!]));
+  root.querySelectorAll<HTMLElement>('[data-i18n-html]').forEach((el) => (el.innerHTML = m[el.dataset.i18nHtml!]));
+  root.querySelectorAll<HTMLElement>('[data-i18n-attr]').forEach((el) => {
+    for (const pair of el.dataset.i18nAttr!.split(';')) {
+      const [attr, key] = pair.split(':');
+      el.setAttribute(attr, m[key]);
+    }
+  });
+  document.documentElement.lang = current;
+}
