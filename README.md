@@ -9,7 +9,7 @@ A small, free viewer for **Elitech RC temperature and humidity data loggers** (t
 - Automatic or fixed resolution: all readings, hourly means, daily means with a min/max band
 - Humidity as **relative (%)**, **absolute (g/m³)** or **dew point**. For a basement, for example, this tells you whether airing out makes the air drier or damper.
 - Nights are shaded in the chart, sun times are shown in the tooltip
-- Several loggers can be used side by side, and devices can be renamed
+- Several loggers: a sidebar lists every device (recognized by its serial number) with a small picture showing its latest reading. Each device gets its own title (default "Device 1", "Device 2", …), its own uploads and its own location and weather source, so loggers in different places are compared with the right weather
 - Importing the same recording more than once is harmless: duplicate readings are merged
 - Everything stays local: measurements and the weather cache live in the app (IndexedDB). Only weather requests go over the network.
 
@@ -28,7 +28,8 @@ Both sources are open and need no API key. Data is cached per month. Months more
 
 1. Connect the logger via USB. It shows up as a drive (e.g. `RC-4HPro`) containing a PDF and a CSV file.
 2. Drag the **CSV file** into the app window or choose it via **Import CSV**.
-3. Set location and weather source via the gear icon. The default is Malter (Dippoldiswalde, Saxony).
+3. Use **Edit device** to give the device a title and set its location and weather source. The default is Malter (Dippoldiswalde, Saxony); new devices start with the location of the device currently shown.
+4. More data for a device: **Upload data**. A new logger: **Add device**, or simply drop its CSV file. Files always end up at the device named by their serial number.
 
 > **Time base:** The CSV contains the time zone the logger was configured with (`Time Base: UTC+00:00`). If the curves look shifted by an hour or two compared to the weather, you can correct the time base per file in the *Imported files* list.
 
@@ -72,6 +73,7 @@ src/sun.ts        sun times and night intervals
 src/humidity.ts   dew point / absolute humidity (Magnus formula)
 src/aggregate.ts  hourly/daily means, gap detection, statistics
 src/chart.ts      chart (Apache ECharts)
+src/deviceArt.ts  stylized device pictures for the device picker
 src/i18n.ts       UI strings (English, German) and language detection
 src/main.ts       user interface
 src-tauri/        desktop shell (Tauri 2)

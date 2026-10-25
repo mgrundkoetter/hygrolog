@@ -1,5 +1,5 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
-import type { Device, ImportRecord, Reading, WeatherPoint } from './types';
+import type { Device, ImportRecord, Location, Reading, WeatherPoint } from './types';
 import type { ParsedReport } from './parser';
 
 export interface WeatherCacheEntry {
@@ -37,7 +37,12 @@ export interface ImportResult {
   added: number;
 }
 
-export async function importReport(report: ParsedReport, fileName: string): Promise<ImportResult> {
+/** `defaults` sets up a device seen for the first time. */
+export async function importReport(
+  report: ParsedReport,
+  fileName: string,
+  defaults: { location: Location; provider: string },
+): Promise<ImportResult> {
   const d = await db();
   const id = crypto.randomUUID();
   const offsetMs = report.tzOffsetMin * 60_000;
@@ -73,7 +78,7 @@ export async function importReport(report: ParsedReport, fileName: string): Prom
   if (!(await devices.get(report.serial))) {
     const all = await devices.getAll();
     const slot = all.reduce((m, dev) => Math.max(m, dev.slot + 1), 0);
-    devices.put({ serial: report.serial, model: report.model, name: `${report.model} ${report.serial.slice(-4)}`, visible: true, slot });
+    devices.put({ serial: report.serial, model: report.model, name: '', slot, ...defaults });
   }
   await tx.done;
   return { record, added: after - before };
@@ -127,8 +132,15 @@ export async function getReadings(serial: string, from: number, to: number): Pro
   return (await db()).getAll('readings', IDBKeyRange.bound([serial, from], [serial, to]));
 }
 
-export async function dataExtent(): Promise<{ first: number; last: number } | null> {
-  const imports = await listImports();
+export async function lastReading(serial: string): Promise<Reading | undefined> {
+  const cursor = await (await db())
+    .transaction('readings')
+    .store.openCursor(IDBKeyRange.bound([serial, -Infinity], [serial, Infinity]), 'prev');
+  return cursor?.value;
+}
+
+export async function dataExtent(serial: string): Promise<{ first: number; last: number } | null> {
+  const imports = (await listImports()).filter((i) => i.serial === serial);
   if (!imports.length) return null;
   return {
     first: Math.min(...imports.map((i) => i.first)),
@@ -142,6 +154,22 @@ export async function listDevices(): Promise<Device[]> {
 
 export async function saveDevice(device: Device): Promise<void> {
   await (await db()).put('devices', device);
+}
+
+/** Removes a device with all its imports and readings. */
+export async function deleteDevice(serial: string): Promise<void> {
+  const d = await db();
+  const tx = d.transaction(['readings', 'imports', 'devices'], 'readwrite');
+  let cursor = await tx.objectStore('readings').openCursor(IDBKeyRange.bound([serial, -Infinity], [serial, Infinity]));
+  while (cursor) {
+    await cursor.delete();
+    cursor = await cursor.continue();
+  }
+  for (const rec of await tx.objectStore('imports').getAll()) {
+    if (rec.serial === serial) await tx.objectStore('imports').delete(rec.id);
+  }
+  await tx.objectStore('devices').delete(serial);
+  await tx.done;
 }
 
 export async function getWeatherCache(key: string) {

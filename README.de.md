@@ -9,7 +9,7 @@ Eine kleine, freie Auswertungs-App für **Elitech-RC-Temperatur- und Feuchtelogg
 - Auflösung automatisch oder fest: alle Messwerte, Stundenmittel, Tagesmittel mit Min/Max-Band
 - Feuchte wahlweise **relativ (%)**, **absolut (g/m³)** oder als **Taupunkt**. So lässt sich z. B. für den Keller ablesen, ob Lüften die Luft trockener oder feuchter macht.
 - Nächte werden im Graphen schattiert, Sonnenzeiten stehen im Tooltip
-- Mehrere Logger lassen sich parallel nutzen, Geräte können umbenannt werden
+- Mehrere Logger: Eine Seitenleiste listet alle Geräte (erkannt an der Seriennummer) mit einem kleinen Bild, das den letzten Messwert zeigt. Jedes Gerät hat einen eigenen Titel (Standard „Gerät 1“, „Gerät 2“, …), eigene Uploads sowie eigenen Standort und eigene Wetterquelle. So werden Logger an verschiedenen Orten mit dem passenden Wetter verglichen
 - Mehrfaches Importieren derselben Aufzeichnung ist unproblematisch, doppelte Messpunkte werden zusammengeführt
 - Oberfläche auf Deutsch und Englisch: Die Sprache wird automatisch aus der Systemsprache erkannt und lässt sich in den Einstellungen umstellen
 - Alles bleibt lokal: Messdaten und Wetter-Cache liegen in der App (IndexedDB). Ins Netz gehen nur die Wetteranfragen.
@@ -27,7 +27,8 @@ Beide Quellen sind offen und brauchen keinen API-Schlüssel. Die Daten werden pr
 
 1. Logger per USB anschließen. Er erscheint als Laufwerk (z. B. `RC-4HPro`) mit einer PDF- und einer CSV-Datei.
 2. Die **CSV-Datei** in das App-Fenster ziehen oder über **CSV importieren** auswählen.
-3. Ort und Wetterquelle über das Zahnrad einstellen. Voreingestellt ist Malter (Dippoldiswalde).
+3. Über **Gerät bearbeiten** einen Titel vergeben sowie Standort und Wetterquelle einstellen. Voreingestellt ist Malter (Dippoldiswalde); neue Geräte übernehmen den Standort des gerade angezeigten Geräts.
+4. Weitere Daten für ein Gerät: **Daten hochladen**. Ein neuer Logger: **Gerät hinzufügen** oder einfach seine CSV-Datei ins Fenster ziehen. Dateien landen immer bei dem Gerät, zu dem ihre Seriennummer gehört.
 
 > **Zeitbasis:** Die CSV enthält die Zeitzone, mit der der Logger konfiguriert wurde (`Time Base: UTC+00:00`). Wirken die Kurven gegenüber dem Wetter um ein oder zwei Stunden verschoben, lässt sich die Zeitbasis in der Liste *Importierte Dateien* pro Datei korrigieren.
 
@@ -71,6 +72,7 @@ src/sun.ts        Sonnenzeiten und Nachtintervalle
 src/humidity.ts   Taupunkt / absolute Feuchte (Magnus-Formel)
 src/aggregate.ts  Stunden-/Tagesmittel, Lückenerkennung, Statistik
 src/chart.ts      Graph (Apache ECharts)
+src/deviceArt.ts  stilisierte Gerätebilder für die Geräteauswahl
 src/i18n.ts       Oberflächentexte (Englisch, Deutsch) und Spracherkennung
 src/main.ts       Oberfläche
 src-tauri/        Desktop-Hülle (Tauri 2)

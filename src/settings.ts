@@ -5,6 +5,9 @@ import type { Location } from './types';
 
 export interface Settings {
   language: LangSetting;
+  /** Serial of the device shown in the main view. */
+  selectedDevice?: string;
+  /** Fallback for devices without their own location (data from before per-device locations) and for the very first device. */
   location: Location;
   provider: string;
   resolution: Resolution;

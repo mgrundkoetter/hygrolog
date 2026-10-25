@@ -2,12 +2,13 @@ import './styles.css';
 import { resolveResolution, stats, type Point, type Resolution, type Stats } from './aggregate';
 import { Chart, type ChartSeries } from './chart';
 import * as db from './db';
+import { deviceArt, modelLabel } from './deviceArt';
 import { convertHumidity, humidityUnits, type HumidityMode } from './humidity';
 import { languageNames, locale, setLanguage, t, translateDocument, type LangSetting } from './i18n';
 import { parseElitechCsv } from './parser';
 import { loadSettings, saveSettings, type Settings } from './settings';
 import { nights } from './sun';
-import type { Device, ImportRecord } from './types';
+import type { Device, ImportRecord, Location, Reading } from './types';
 import { loadWeather, providerById, providers, searchPlace } from './weather';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -18,6 +19,7 @@ let settings: Settings = loadSettings();
 setLanguage(settings.language);
 let devices: Device[] = [];
 let imports: ImportRecord[] = [];
+let latest = new Map<string, Reading | undefined>();
 let range = { from: 0, to: 0 };
 let renderSeq = 0;
 const chart = new Chart($('chart'));
@@ -70,34 +72,66 @@ function offsetLabel(min: number) {
   return `UTC${sign}${String(Math.floor(a / 60)).padStart(2, '0')}:${String(a % 60).padStart(2, '0')}`;
 }
 
+// ---------- devices ----------
+
+const current = (): Device | undefined => devices.find((d) => d.serial === settings.selectedDevice);
+const deviceTitle = (d: Device) => d.name || t().deviceDefault(d.slot + 1);
+const deviceLocation = (d: Device): Location => d.location ?? settings.location;
+const deviceProvider = (d: Device) => providerById(d.provider ?? settings.provider);
+
+async function selectDevice(serial: string) {
+  settings.selectedDevice = serial;
+  saveSettings(settings);
+  renderDeviceList();
+  renderDeviceHead();
+  renderImports();
+  updateAttribution();
+  await presetRange(30);
+}
+
 // ---------- import ----------
 
-async function importFiles(files: FileList | File[]) {
+/** Imports CSV files. Each file goes to the device named by its serial number; `target` is the device the user uploaded for. */
+async function importFiles(files: FileList | File[], target?: string) {
   const list = Array.from(files).filter((f) => /\.csv$/i.test(f.name) || f.type === 'text/csv');
   if (!list.length) {
     toast(t().pickCsvOnly, true);
     return;
   }
-  const hadData = imports.length > 0;
+  // New devices start out where the currently shown one is; most loggers live close together.
+  const dev = current();
+  const defaults = {
+    location: dev ? deviceLocation(dev) : settings.location,
+    provider: dev ? deviceProvider(dev).id : settings.provider,
+  };
+  let lastSerial: string | undefined;
+  const elsewhere: [file: string, serial: string][] = [];
   for (const file of list) {
     try {
       const report = parseElitechCsv(await file.text(), file.name);
-      const { record, added } = await db.importReport(report, file.name);
-      const dup = record.count - added;
-      toast(t().imported(file.name, record.count, dup));
+      const { record, added } = await db.importReport(report, file.name, defaults);
+      toast(t().imported(file.name, record.count, record.count - added));
+      if (target && report.serial !== target) elsewhere.push([file.name, report.serial]);
+      lastSerial = report.serial;
     } catch (e) {
       toast(`${file.name}: ${(e as Error).message}`, true);
     }
   }
   await reloadMeta();
-  if (!hadData) await presetRange(30);
-  else await renderAll();
+  if (!lastSerial) return;
+  for (const [name, serial] of elsewhere) {
+    const owner = devices.find((d) => d.serial === serial);
+    if (owner) toast(t().importedOtherDevice(name, deviceTitle(owner)));
+  }
+  if (lastSerial !== settings.selectedDevice) await selectDevice(lastSerial);
+  else await presetRange(30);
 }
 
 // ---------- range ----------
 
 async function presetRange(days: number | 'all') {
-  const extent = await db.dataExtent();
+  const dev = current();
+  const extent = dev ? await db.dataExtent(dev.serial) : null;
   const last = extent?.last ?? Date.now();
   const to = endOfDay(last);
   const from = days === 'all' ? startOfDay(extent?.first ?? last - 30 * DAY) : startOfDay(last - (days - 1) * DAY);
@@ -113,7 +147,8 @@ function setRange(from: number, to: number) {
 }
 
 async function markPreset() {
-  const extent = await db.dataExtent();
+  const dev = current();
+  const extent = dev ? await db.dataExtent(dev.serial) : null;
   const spanDays = Math.round((range.to - range.from) / DAY);
   const endsAtData = !!extent && toInputDate(range.to) === toInputDate(extent.last);
   const isAll = endsAtData && toInputDate(range.from) === toInputDate(extent!.first);
@@ -127,39 +162,68 @@ async function markPreset() {
 
 async function reloadMeta() {
   [devices, imports] = await Promise.all([db.listDevices(), db.listImports()]);
-  const hasData = imports.length > 0;
+  latest = new Map(await Promise.all(devices.map(async (d) => [d.serial, await db.lastReading(d.serial)] as const)));
+  if (!current() && devices.length) {
+    settings.selectedDevice = devices[0].serial;
+    saveSettings(settings);
+  }
+  const hasData = devices.length > 0;
   $('empty').hidden = hasData;
-  $('workspace').hidden = !hasData;
-  renderDevices();
+  $('layout').hidden = !hasData;
+  renderDeviceList();
+  renderDeviceHead();
   renderImports();
+  updateAttribution();
+}
+
+function renderDeviceList() {
+  $('device-list').innerHTML = devices
+    .map((d) => {
+      const last = latest.get(d.serial);
+      const selected = d.serial === settings.selectedDevice;
+      return `<button type="button" class="device-tile${selected ? ' selected' : ''}" role="option" aria-selected="${selected}" data-serial="${esc(d.serial)}" style="--device-color:${seriesColor(d.slot)}">
+        ${deviceArt(d.model, last ? { temp: last.temp, hum: last.hum } : null)}
+        <span class="device-tile-text">
+          <span class="device-tile-title">${esc(deviceTitle(d))}</span>
+          <span class="device-tile-sub">${esc(d.serial)}</span>
+          <span class="device-tile-sub">${last ? esc(t().lastReading(fmtDateTime(last.ts))) : t().noReadingsYet}</span>
+        </span>
+      </button>`;
+    })
+    .join('');
+}
+
+function renderDeviceHead() {
+  const dev = current();
+  if (!dev) return;
+  $('device-title').innerHTML = `<span class="swatch" style="background:${seriesColor(dev.slot)}"></span>${esc(deviceTitle(dev))}`;
+  $('device-meta').textContent = [
+    modelLabel(dev.model),
+    `${t().serialNo} ${dev.serial}`,
+    `${deviceLocation(dev).name} (${deviceProvider(dev).label})`,
+  ].join(' · ');
 }
 
 async function renderAll() {
-  if (!imports.length) return;
+  const dev = current();
+  if (!dev) return;
   const seq = ++renderSeq;
   const { from, to } = range;
   const res = resolveResolution(settings.resolution, from, to);
   const mode = settings.humidityMode;
+  const location = deviceLocation(dev);
   void markPreset();
 
-  const deviceSeries: ChartSeries[] = [];
-  const visible = devices.filter((d) => d.visible);
-  const label = (d: Device) => {
-    const name = d.name || d.serial;
-    return visible.filter((o) => (o.name || o.serial) === name).length > 1 ? `${name} (${d.serial.slice(-4)})` : name;
-  };
-  for (const dev of visible) {
-    const rows = await db.getReadings(dev.serial, from, to);
-    deviceSeries.push({
-      id: dev.serial,
-      name: label(dev),
-      color: cssColor(seriesColor(dev.slot)),
-      reference: false,
-      temp: rows.map((r) => ({ ts: r.ts, v: r.temp })),
-      hum: rows.map((r) => ({ ts: r.ts, v: convertHumidity(mode, r.temp, r.hum) })),
-    });
-  }
+  const rows = await db.getReadings(dev.serial, from, to);
   if (seq !== renderSeq) return;
+  const deviceSeries: ChartSeries = {
+    id: dev.serial,
+    name: deviceTitle(dev),
+    color: cssColor(seriesColor(dev.slot)),
+    reference: false,
+    temp: rows.map((r) => ({ ts: r.ts, v: r.temp })),
+    hum: rows.map((r) => ({ ts: r.ts, v: convertHumidity(mode, r.temp, r.hum) })),
+  };
 
   const tooManyNights = to - from > NIGHTS_MAX_DAYS * DAY;
   const input = {
@@ -167,15 +231,14 @@ async function renderAll() {
     to,
     res,
     humMode: mode,
-    location: settings.location,
-    nights: settings.showNights && !tooManyNights ? nights(from, to, settings.location.lat, settings.location.lon) : null,
+    location,
+    nights: settings.showNights && !tooManyNights ? nights(from, to, location.lat, location.lon) : null,
   };
-  chart.render({ ...input, series: deviceSeries });
+  chart.render({ ...input, series: [deviceSeries] });
   renderStats(deviceSeries, null);
 
-  const empty = deviceSeries.every((s) => s.temp.length === 0);
   const notes: string[] = [];
-  if (empty) notes.push(t().noReadingsInRange);
+  if (!rows.length) notes.push(t().noReadingsInRange);
   if (settings.showNights && tooManyNights) notes.push(t().nightsLimited(NIGHTS_MAX_DAYS));
 
   if (!settings.showWeather) {
@@ -183,24 +246,21 @@ async function renderAll() {
     return;
   }
 
-  const provider = providerById(settings.provider);
   setStatus(t().loadingWeather);
-  const weather = await loadWeather(provider, settings.location, from, to, (done, total) => {
+  const weather = await loadWeather(deviceProvider(dev), location, from, to, (done, total) => {
     if (seq === renderSeq && total > 1) setStatus(t().loadingWeatherProgress(done, total));
   });
   if (seq !== renderSeq) return;
 
-  const where = weather.station ? weather.station : settings.location.name;
   const weatherSeries: ChartSeries = {
     id: 'weather',
-    name: t().weatherSeries(where),
+    name: t().weatherSeries(weather.station ?? location.name),
     color: cssColor('var(--weather)'),
     reference: true,
     temp: weather.points.map((p): Point => ({ ts: p.ts, v: p.temp })),
     hum: weather.points.map((p): Point => ({ ts: p.ts, v: convertHumidity(mode, p.temp, p.hum) })),
   };
-  const all = [...deviceSeries, weatherSeries];
-  chart.render({ ...input, series: all });
+  chart.render({ ...input, series: [deviceSeries, weatherSeries] });
   renderStats(deviceSeries, weatherSeries);
 
   if (weather.errors.length) {
@@ -220,13 +280,12 @@ function statBlock(label: string, s: Stats | null, unit: string, digits: number)
   );
 }
 
-function renderStats(deviceSeries: ChartSeries[], weather: ChartSeries | null) {
+function renderStats(device: ChartSeries, weather: ChartSeries | null) {
   const m = t();
   const humUnit = humidityUnits[settings.humidityMode];
   const humDigits = settings.humidityMode === 'relative' ? 0 : 1;
   const humLabel = { relative: m.statHumRelative, absolute: m.statHumAbsolute, dewpoint: m.statHumDewpoint }[settings.humidityMode];
-  const withData = deviceSeries.filter((s) => s.temp.length || s.hum.length);
-  const cards = [...withData, ...(weather ? [weather] : [])].map((s) => {
+  const cards = [device, ...(weather ? [weather] : [])].map((s) => {
     const temp = stats(s.temp);
     const h = stats(s.hum);
     return `<div class="card stat-card">
@@ -242,35 +301,15 @@ function renderStats(deviceSeries: ChartSeries[], weather: ChartSeries | null) {
   $('stats').innerHTML = cards.join('');
 }
 
-function renderDevices() {
-  const el = $('devices');
-  if (!devices.length) {
-    el.innerHTML = `<div class="list-empty">${t().noDevices}</div>`;
-    return;
-  }
-  el.innerHTML = devices
-    .map(
-      (d) => `<div class="list-row" data-serial="${esc(d.serial)}">
-        <label class="switch" title="${t().showInChart}"><input type="checkbox" data-act="visible" ${d.visible ? 'checked' : ''} /></label>
-        <span class="swatch" style="background:${seriesColor(d.slot)}"></span>
-        <div class="list-main">
-          <input type="text" data-act="name" value="${esc(d.name)}" aria-label="${t().deviceName}" />
-          <div class="list-sub">${esc(d.model)} · ${t().serialNo} ${esc(d.serial)}</div>
-        </div>
-      </div>`,
-    )
-    .join('');
-}
-
 function renderImports() {
   const el = $('imports');
-  if (!imports.length) {
+  const own = imports.filter((i) => i.serial === settings.selectedDevice);
+  if (!own.length) {
     el.innerHTML = `<div class="list-empty">${t().nothingImported}</div>`;
     return;
   }
-  const names = new Map(devices.map((d) => [d.serial, d.name || d.serial]));
   const offsets = Array.from({ length: 27 }, (_, i) => (i - 12) * 60);
-  el.innerHTML = imports
+  el.innerHTML = own
     .map((i) => {
       const opts = [...new Set([...offsets, i.fileTzOffsetMin, i.tzOffsetMin])]
         .sort((a, b) => a - b)
@@ -282,7 +321,7 @@ function renderImports() {
       return `<div class="list-row" data-id="${i.id}">
         <div class="list-main">
           <div class="list-title" title="${esc(i.fileName)}">${esc(i.fileName)}</div>
-          <div class="list-sub">${esc(names.get(i.serial) ?? i.serial)} · ${fmtDateTime(i.first)} – ${fmtDateTime(i.last)} · ${t().values(i.count.toLocaleString(locale()))}${i.interval ? ` · ${t().every(esc(i.interval))}` : ''}</div>
+          <div class="list-sub">${fmtDateTime(i.first)} – ${fmtDateTime(i.last)} · ${t().values(i.count.toLocaleString(locale()))}${i.interval ? ` · ${t().every(esc(i.interval))}` : ''}</div>
         </div>
         <select data-act="offset" title="${t().timeBaseHint}">${opts}</select>
         <button class="btn small danger" data-act="delete" type="button">${t().remove}</button>
@@ -291,33 +330,63 @@ function renderImports() {
     .join('');
 }
 
-// ---------- settings dialog ----------
+// ---------- settings dialog (app-wide) ----------
 
-const dialog = $<HTMLDialogElement>('settings');
+const settingsDialog = $<HTMLDialogElement>('settings');
 
-async function openSettings() {
+function openSettings() {
   const languageSelect = $<HTMLSelectElement>('language');
   languageSelect.querySelectorAll('option:not([value=auto])').forEach((o) => o.remove());
   for (const [code, name] of Object.entries(languageNames)) languageSelect.add(new Option(name, code));
   languageSelect.value = settings.language;
-  $<HTMLInputElement>('loc-name').value = settings.location.name;
-  $<HTMLInputElement>('loc-lat').value = String(settings.location.lat);
-  $<HTMLInputElement>('loc-lon').value = String(settings.location.lon);
-  $('place-results').innerHTML = '';
-  $<HTMLInputElement>('place-query').value = '';
-  $('providers').innerHTML = providers
-    .map(
-      (p) => `<label><input type="radio" name="provider" value="${p.id}" ${p.id === settings.provider ? 'checked' : ''} />
-        <span>${esc(p.label)}<small>${esc(p.description)}</small></span></label>`,
-    )
-    .join('');
-  updateCacheInfo();
-  dialog.showModal();
+  void updateCacheInfo();
+  settingsDialog.showModal();
 }
 
 async function updateCacheInfo() {
   const n = await db.weatherCacheSize();
   $('cache-info').textContent = n ? t().cacheInfo(n) : t().cacheEmpty;
+}
+
+function applySettingsDialog() {
+  const language = $<HTMLSelectElement>('language').value as LangSetting;
+  if (language === settings.language) return;
+  settings.language = language;
+  setLanguage(language);
+  translateDocument();
+  saveSettings(settings);
+  renderDeviceList();
+  renderDeviceHead();
+  renderImports();
+  updateAttribution();
+  void renderAll();
+}
+
+// ---------- device dialog ----------
+
+const deviceDialog = $<HTMLDialogElement>('device-dialog');
+
+function openDeviceSettings() {
+  const dev = current();
+  if (!dev) return;
+  const loc = deviceLocation(dev);
+  const name = $<HTMLInputElement>('dev-name');
+  name.value = dev.name;
+  name.placeholder = t().deviceDefault(dev.slot + 1);
+  $('dev-ident').textContent = `${modelLabel(dev.model)} · ${t().serialNo} ${dev.serial}`;
+  $<HTMLInputElement>('loc-name').value = loc.name;
+  $<HTMLInputElement>('loc-lat').value = String(loc.lat);
+  $<HTMLInputElement>('loc-lon').value = String(loc.lon);
+  $('place-results').innerHTML = '';
+  $<HTMLInputElement>('place-query').value = '';
+  const providerId = deviceProvider(dev).id;
+  $('providers').innerHTML = providers
+    .map(
+      (p) => `<label><input type="radio" name="provider" value="${p.id}" ${p.id === providerId ? 'checked' : ''} />
+        <span>${esc(p.label)}<small>${esc(p.description)}</small></span></label>`,
+    )
+    .join('');
+  deviceDialog.showModal();
 }
 
 async function runPlaceSearch() {
@@ -349,42 +418,41 @@ async function runPlaceSearch() {
   }
 }
 
-function applySettingsDialog() {
+async function applyDeviceDialog() {
+  const dev = current();
+  if (!dev) return;
+  dev.name = $<HTMLInputElement>('dev-name').value.trim();
   const lat = Number($<HTMLInputElement>('loc-lat').value);
   const lon = Number($<HTMLInputElement>('loc-lon').value);
   if (Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
-    settings.location = { name: $<HTMLInputElement>('loc-name').value.trim() || `${lat}, ${lon}`, lat, lon };
+    dev.location = { name: $<HTMLInputElement>('loc-name').value.trim() || `${lat}, ${lon}`, lat, lon };
   } else {
     toast(t().invalidCoords, true);
   }
-  const p = dialog.querySelector<HTMLInputElement>('input[name=provider]:checked');
-  if (p) settings.provider = p.value;
-  const language = $<HTMLSelectElement>('language').value as LangSetting;
-  if (language !== settings.language) {
-    settings.language = language;
-    applyLanguage();
-  }
-  persist();
-}
-
-// ---------- wiring ----------
-
-function persist() {
-  saveSettings(settings);
+  const p = deviceDialog.querySelector<HTMLInputElement>('input[name=provider]:checked');
+  if (p) dev.provider = p.value;
+  await db.saveDevice(dev);
+  renderDeviceList();
+  renderDeviceHead();
   updateAttribution();
   void renderAll();
 }
 
-/** Switches the UI language; dynamic parts are redrawn by the following persist()/renderAll(). */
-function applyLanguage() {
-  setLanguage(settings.language);
-  translateDocument();
-  renderDevices();
-  renderImports();
+async function removeCurrentDevice() {
+  const dev = current();
+  if (!dev || !confirm(t().confirmRemoveDevice(deviceTitle(dev)))) return;
+  deviceDialog.close();
+  await db.deleteDevice(dev.serial);
+  settings.selectedDevice = undefined;
+  await reloadMeta();
+  if (current()) await presetRange(30);
 }
 
+// ---------- wiring ----------
+
 function updateAttribution() {
-  const p = providerById(settings.provider);
+  const dev = current();
+  const p = dev ? deviceProvider(dev) : providerById(settings.provider);
   const a = $<HTMLAnchorElement>('attribution');
   a.textContent = p.attribution;
   a.href = p.attributionUrl;
@@ -392,12 +460,27 @@ function updateAttribution() {
 
 function bindControls() {
   const fileInput = $<HTMLInputElement>('file');
-  const pick = () => fileInput.click();
-  $('btn-import').addEventListener('click', pick);
-  $('btn-import-empty').addEventListener('click', pick);
+  let uploadTarget: string | undefined;
+  const pick = (target?: string) => {
+    uploadTarget = target;
+    fileInput.click();
+  };
+  $('btn-import-empty').addEventListener('click', () => pick());
+  $('btn-add-device').addEventListener('click', () => pick());
+  $('btn-upload').addEventListener('click', () => pick(settings.selectedDevice));
   fileInput.addEventListener('change', () => {
-    if (fileInput.files?.length) void importFiles(fileInput.files);
+    if (fileInput.files?.length) void importFiles(fileInput.files, uploadTarget);
     fileInput.value = '';
+  });
+
+  $('device-list').addEventListener('click', (e) => {
+    const serial = (e.target as HTMLElement).closest<HTMLElement>('[data-serial]')?.dataset.serial;
+    if (serial && serial !== settings.selectedDevice) void selectDevice(serial);
+  });
+  $('btn-device-settings').addEventListener('click', openDeviceSettings);
+  $('dev-delete').addEventListener('click', removeCurrentDevice);
+  deviceDialog.addEventListener('close', () => {
+    if (deviceDialog.returnValue === 'save') void applyDeviceDialog();
   });
 
   $('from').addEventListener('change', (e) => {
@@ -412,6 +495,10 @@ function bindControls() {
     b.addEventListener('click', () => presetRange(b.dataset.days === 'all' ? 'all' : Number(b.dataset.days))),
   );
 
+  const persist = () => {
+    saveSettings(settings);
+    void renderAll();
+  };
   const res = $<HTMLSelectElement>('res');
   const hum = $<HTMLSelectElement>('hum');
   const showWeather = $<HTMLInputElement>('show-weather');
@@ -424,18 +511,6 @@ function bindControls() {
   hum.addEventListener('change', () => { settings.humidityMode = hum.value as HumidityMode; persist(); });
   showWeather.addEventListener('change', () => { settings.showWeather = showWeather.checked; persist(); });
   showNights.addEventListener('change', () => { settings.showNights = showNights.checked; persist(); });
-
-  $('devices').addEventListener('change', async (e) => {
-    const t = e.target as HTMLInputElement;
-    const serial = t.closest<HTMLElement>('[data-serial]')?.dataset.serial;
-    const dev = devices.find((d) => d.serial === serial);
-    if (!dev) return;
-    if (t.dataset.act === 'visible') dev.visible = t.checked;
-    if (t.dataset.act === 'name') dev.name = t.value.trim() || dev.model;
-    await db.saveDevice(dev);
-    renderImports();
-    void renderAll();
-  });
 
   $('imports').addEventListener('change', async (e) => {
     const t = e.target as HTMLSelectElement;
@@ -469,11 +544,11 @@ function bindControls() {
     toast(t().cacheCleared(n));
     void updateCacheInfo();
   });
-  dialog.addEventListener('close', () => {
-    if (dialog.returnValue === 'save') applySettingsDialog();
+  settingsDialog.addEventListener('close', () => {
+    if (settingsDialog.returnValue === 'save') applySettingsDialog();
   });
 
-  // Drag & drop anywhere in the window.
+  // Drag & drop anywhere in the window; the serial number in each file decides the device.
   let depth = 0;
   const drop = $('drop');
   window.addEventListener('dragenter', (e) => {
@@ -510,9 +585,8 @@ function bindControls() {
 async function init() {
   translateDocument();
   bindControls();
-  updateAttribution();
   await reloadMeta();
-  if (imports.length) await presetRange(30);
+  if (current()) await presetRange(30);
 }
 
 void init();

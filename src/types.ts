@@ -29,10 +29,13 @@ export interface ImportRecord {
 export interface Device {
   serial: string;
   model: string;
+  /** User-given title; empty means the default "Device <slot + 1>". */
   name: string;
-  visible: boolean;
-  /** Fixed palette slot, assigned once so colors never shift when devices are hidden. */
+  /** Fixed slot, assigned once: drives the color and the default title. */
   slot: number;
+  /** Where the device is used: location and source of its comparison weather. */
+  location?: Location;
+  provider?: string;
 }
 
 export interface WeatherPoint {

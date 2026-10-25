@@ -169,6 +169,119 @@ main {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-width: 0;
+}
+.layout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+/* ---------- Device picker ---------- */
+
+.sidebar {
+  position: sticky;
+  top: 84px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+}
+.sidebar h2 {
+  margin: 2px 4px 2px;
+}
+.device-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.device-tile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 10px 8px 8px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  position: relative;
+}
+.device-tile:hover {
+  background: var(--surface-2);
+}
+.device-tile.selected {
+  background: var(--surface-2);
+  border-color: var(--device-color, var(--accent));
+  box-shadow: inset 3px 0 0 var(--device-color, var(--accent));
+}
+.device-tile:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.device-art {
+  width: 46px;
+  height: auto;
+  flex: none;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.12));
+}
+.device-tile-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.device-tile-title {
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.device-tile-sub {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.add-device {
+  justify-content: center;
+  border-style: dashed;
+}
+.sidebar-hint {
+  margin: 0 4px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.device-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+}
+.device-head-main {
+  min-width: 0;
+}
+.device-head h1 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 20px;
+}
+.device-head h1 .swatch {
+  width: 18px;
+  height: 6px;
+  border-radius: 3px;
+}
+.device-meta {
+  margin-top: 2px;
+  font-size: 12.5px;
+  color: var(--text-muted);
 }
 
 .card {
@@ -480,11 +593,6 @@ select:focus-visible,
 
 /* ---------- Lists ---------- */
 
-.columns {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
-  gap: 16px;
-}
 .list {
   display: flex;
   flex-direction: column;
@@ -659,6 +767,17 @@ legend {
   color: var(--text-muted);
   font-size: 12px;
 }
+.fieldset-hint {
+  margin: -6px 0 2px;
+  font-size: 12.5px;
+}
+#dev-ident {
+  font-size: 12.5px;
+}
+.danger-zone {
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
 .cache-row {
   display: flex;
   justify-content: space-between;
@@ -710,8 +829,25 @@ legend {
 }
 
 @media (max-width: 860px) {
-  .columns {
+  .layout {
     grid-template-columns: minmax(0, 1fr);
+  }
+  /* The device picker turns into a horizontally scrolling strip above the chart. */
+  .sidebar {
+    position: static;
+  }
+  .device-list {
+    flex-direction: row;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+  .device-tile {
+    width: auto;
+    flex: none;
+    max-width: 240px;
+  }
+  .sidebar-hint {
+    display: none;
   }
 }
 @media (max-width: 600px) {
@@ -745,6 +881,13 @@ legend {
   }
   .loc-grid .field:first-child {
     grid-column: 1 / -1;
+  }
+  .device-head .actions {
+    width: 100%;
+  }
+  .device-head .actions .btn {
+    flex: 1;
+    justify-content: center;
   }
   #imports .list-row {
     flex-wrap: wrap;
