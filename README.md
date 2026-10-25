@@ -39,7 +39,7 @@ Ready-made packages are available under *Releases*: `.dmg` for macOS (Apple Sili
 
 The packages are not signed, because signing certificates cost money. The operating system will therefore ask for confirmation on first launch:
 
-- **macOS:** Right-click the app → *Open* → *Open*. If macOS says the app is "damaged": `xattr -dr com.apple.quarantine /Applications/Hygrolog.app`
+- **macOS:** Open the app once and close the warning with *Done*. Then go to *System Settings → Privacy & Security*, scroll down to the message about Hygrolog and click *Open Anyway* (confirm with your password). Alternatively, in the Terminal: `xattr -dr com.apple.quarantine /Applications/Hygrolog.app`
 - **Windows:** SmartScreen → *More info* → *Run anyway*
 
 The same app also runs in the browser, e.g. for free via GitHub Pages (see below).
