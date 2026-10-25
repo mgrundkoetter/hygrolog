@@ -1,0 +1,46 @@
+Data Report File Created At:2026/07/27 01:15:37
+Status: ALARM
+Note: All temperatures are in Degree Celsius.
+
+Device Information
+Device Code:      RC-4HPro
+Probe Type: Temperature & Humidity(internal)Serial Number:    EFX267100110
+Firmware Version: V1.4
+Mode Code:        TLCFFA089
+
+Trip Information
+Trip Id:      0000001
+Description: "Temperature recording.
+Configuration Information
+Start Mode:   Manual
+Log Interval: 5m 
+Start Delay:  0s
+Stop Mode:    Manual + Software
+Time Base:    UTC+00:00
+
+Alarm Zone,Allow Time,Alarm Type,Total Time,Violations,Status
+H1(T): 60.0,0s,Sin,0s,0,OK
+L1(T):-30.0,0s,Sin,0s,0,OK
+Ideal Region,unlimited,,25m 
+H(H): 90.0,0s,Sin,20m ,1,Alarm
+L(H): 10.0,0s,Sin,0s,0,OK
+Ideal Region,unlimited,,5m 
+
+Logging Summary,Temp,Humi
+Highest:, 12.1, 90.8
+Lowest:, 11.9, 83.8
+Average:, 12.0, 89.3
+Alarm At(T):     N/A
+Alarm At(H):     2026/07/27 00:54:12
+Start Time:   2026/07/27 00:49:12
+Stop Time:    2026/07/27 01:14:12(temporary)
+Elapsed Time: 25m 
+Data Points:  6
+
+Date,Time,Temperature,Humidity
+2026/07/27,00:49:12, 11.9, 83.8
+2026/07/27,00:54:12, 12.0, 90.8
+2026/07/27,00:59:12, 12.1, 90.5
+2026/07/27,01:04:12, 12.0, 90.6
+2026/07/27,01:09:12, 12.0, 90.6
+2026/07/27,01:14:12, 12.0, 89.5

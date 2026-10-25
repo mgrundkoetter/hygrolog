@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Auswertung von Elitech RC-Temperatur- und Feuchteloggern mit Wetterdaten zum Vergleich." />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <title>Hygrolog</title>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <img src="./favicon.svg" alt="" width="28" height="28" />
+        <div>
+          <div class="brand-name">Hygrolog</div>
+          <div class="brand-sub">Auswertung für Elitech-RC-Logger</div>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="btn-import" class="btn primary" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-4-4m4 4 4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /></svg>
+          CSV importieren
+        </button>
+        <button id="btn-settings" class="btn icon" type="button" aria-label="Einstellungen" title="Einstellungen">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></svg>
+        </button>
+      </div>
+      <input id="file" type="file" accept=".csv,text/csv" multiple hidden />
+    </header>
+
+    <main>
+      <section id="empty" class="card empty" hidden>
+        <img src="./favicon.svg" alt="" width="56" height="56" />
+        <h1>Noch keine Messdaten</h1>
+        <ol>
+          <li>Logger per USB anschließen. Er erscheint als Laufwerk, z.&nbsp;B. <b>RC-4HPro</b>.</li>
+          <li>Die <b>CSV-Datei</b> (z.&nbsp;B. <code>EFX267100110-0000001.csv</code>) hierher ziehen oder über <b>CSV importieren</b> auswählen.</li>
+          <li>Fertig. Die Daten bleiben lokal auf diesem Rechner gespeichert.</li>
+        </ol>
+        <p class="muted">Du kannst dieselbe Aufzeichnung später noch einmal importieren: doppelte Messpunkte werden zusammengeführt.</p>
+        <button id="btn-import-empty" class="btn primary" type="button">CSV-Datei auswählen</button>
+      </section>
+
+      <section id="workspace" hidden>
+        <div class="card toolbar">
+          <div class="toolbar-row">
+            <div class="range">
+              <label class="field"><span>Von</span><input id="from" type="date" /></label>
+              <label class="field"><span>Bis</span><input id="to" type="date" /></label>
+            </div>
+            <div class="segmented" id="presets" role="group" aria-label="Zeitraum">
+              <button type="button" data-days="1">1 T</button>
+              <button type="button" data-days="7">7 T</button>
+              <button type="button" data-days="30">30 T</button>
+              <button type="button" data-days="90">90 T</button>
+              <button type="button" data-days="365">1 J</button>
+              <button type="button" data-days="all">Alles</button>
+            </div>
+          </div>
+          <div class="toolbar-row">
+            <label class="field inline"><span>Auflösung</span>
+              <select id="res">
+                <option value="auto">Automatisch</option>
+                <option value="raw">Alle Messwerte</option>
+                <option value="hour">Stundenmittel</option>
+                <option value="day">Tagesmittel mit Min/Max</option>
+              </select>
+            </label>
+            <label class="field inline"><span>Feuchte als</span>
+              <select id="hum">
+                <option value="relative">relative Feuchte (%)</option>
+                <option value="absolute">absolute Feuchte (g/m³)</option>
+                <option value="dewpoint">Taupunkt (°C)</option>
+              </select>
+            </label>
+            <label class="switch"><input id="show-weather" type="checkbox" /><span>Wetter</span></label>
+            <label class="switch"><input id="show-nights" type="checkbox" /><span>Nächte schattieren</span></label>
+          </div>
+        </div>
+
+        <div class="card chart-card">
+          <div id="status" class="status" aria-live="polite"></div>
+          <div id="chart"></div>
+        </div>
+
+        <div id="stats" class="stats"></div>
+
+        <div class="columns">
+          <section class="card">
+            <h2>Geräte</h2>
+            <div id="devices" class="list"></div>
+          </section>
+          <section class="card">
+            <h2>Importierte Dateien</h2>
+            <div id="imports" class="list"></div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <span>Wetterdaten: <a id="attribution" target="_blank" rel="noopener"></a></span>
+      <span>Sonnenzeiten werden lokal berechnet</span>
+      <span>Alle Daten bleiben auf diesem Gerät</span>
+    </footer>
+
+    <dialog id="settings">
+      <form method="dialog" class="dialog-body">
+        <header class="dialog-head">
+          <h2>Einstellungen</h2>
+          <button class="btn icon" value="close" aria-label="Schließen">✕</button>
+        </header>
+
+        <fieldset>
+          <legend>Standort für Wetter & Sonnenzeiten</legend>
+          <div class="search">
+            <input id="place-query" type="search" placeholder="Ort suchen, z. B. Dippoldiswalde" autocomplete="off" />
+            <button id="place-search" class="btn" type="button">Suchen</button>
+          </div>
+          <div id="place-results" class="place-results"></div>
+          <div class="loc-grid">
+            <label class="field"><span>Name</span><input id="loc-name" type="text" /></label>
+            <label class="field"><span>Breite</span><input id="loc-lat" type="number" step="0.001" min="-90" max="90" /></label>
+            <label class="field"><span>Länge</span><input id="loc-lon" type="number" step="0.001" min="-180" max="180" /></label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Wetterquelle</legend>
+          <div id="providers" class="providers"></div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Wetter-Cache</legend>
+          <div class="cache-row">
+            <span id="cache-info" class="muted"></span>
+            <button id="cache-clear" class="btn" type="button">Cache leeren</button>
+          </div>
+        </fieldset>
+
+        <footer class="dialog-foot">
+          <button class="btn primary" value="save" id="settings-save">Übernehmen</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <div id="drop" class="drop" hidden><div>CSV-Dateien hier ablegen</div></div>
+    <div id="toasts" class="toasts" aria-live="polite"></div>
+
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>
