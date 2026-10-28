@@ -88,34 +88,11 @@ Other Elitech models (RC-4 Pro, RC-5+, …) write the same CSV format and should
 
 Goal: Hygrolog should be able to configure the logger itself (interval, start mode, alarm limits, time zone, set the clock from the computer), so the vendor app is no longer needed at all. Bonus: read measurements directly via USB instead of through the CSV file.
 
-**Findings so far (from ElitechLog V8.3.5 / 13.2.4 for macOS, read-only analysis):**
+**Findings so far:**
 
 - The Pro models present themselves via USB as a drive (PDF/CSV) **and additionally as a HID device**. ElitechLog uses [hidapi](https://github.com/libusb/hidapi) for this. Older RC-4/RC-5 models without "Pro" use a serial interface instead ([elitech-datareader](https://pypi.org/project/elitech-datareader/)), which is a different protocol.
-- Packet layout (from `initializePacket:withCmd:withExtCmd:withAddr:withLen:withData:dataLen:`):
-
-  | Byte | Content |
-  |---|---|
-  | 0–1 | `33 CC` (magic) |
-  | 2 | `00` |
-  | 3 | packet length = data length + 12 |
-  | 4 | command (`cmd`) |
-  | 5 | sub-command (`extCmd`) |
-  | 6 | `00` |
-  | 7–8 | address, big-endian |
-  | 9–10 | length, big-endian |
-  | 11 … | payload |
-  | last | checksum: sum of all previous bytes, 8 bit |
-
-- Still unknown: the command numbers (device info, read/write configuration, clock, read data), the configuration encoding, the response packets, VID/PID and the HID report size.
-
-**Next step: capture traffic with a real device**
-
-1. Quit the regular ElitechLog.
-2. Run `tools/hidspy/capture.sh`. The script creates an ad-hoc signed copy of ElitechLog with a small HID logger injected (the original stays untouched) and writes all packets to `tools/hidspy/hid.log`.
-3. Plug in the logger and wait until the device info appears.
-4. Under **Configure**, set values and click **"Parameter"**. ⚠️ This erases the running recording on the device, so back up the CSV from the drive first.
-5. Optional: read data or use "new data" so the read command ends up in the capture as well.
-6. Close the app and analyse `hid.log`.
+- Captures with a real RC-4H Pro have decoded the packet format, the commands, nearly all configuration fields and the measurement read. The details and recorded packets are in [tools/hidspy/PROTOCOL.md](tools/hidspy/PROTOCOL.md). The encoding of negative measurements is still missing.
+- More captures (e.g. from other models) are made with `tools/hidspy/capture.sh`: quit ElitechLog, run the script, change one setting per save and compare the writes in `tools/hidspy/hid.log`. ⚠️ Saving a configuration erases the recording on the device, so back up the CSV first.
 
 **Implementation afterwards:**
 

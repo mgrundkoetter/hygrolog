@@ -87,34 +87,11 @@ Weitere Elitech-Modelle (RC-4 Pro, RC-5+, …) schreiben dasselbe CSV-Format und
 
 Ziel: Hygrolog soll den Logger selbst konfigurieren können (Intervall, Startmodus, Grenzwerte, Zeitzone, Uhrzeit vom Rechner übernehmen), damit die Hersteller-App gar nicht mehr nötig ist. Als Bonus: Messwerte direkt per USB auslesen statt über die CSV-Datei.
 
-**Bisherige Erkenntnisse (aus ElitechLog V8.3.5 / 13.2.4 für macOS, nur lesend analysiert):**
+**Bisherige Erkenntnisse:**
 
 - Die Pro-Modelle melden sich per USB als Laufwerk (PDF/CSV) **und zusätzlich als HID-Gerät**. ElitechLog nutzt dafür [hidapi](https://github.com/libusb/hidapi). Ältere RC-4/RC-5 ohne „Pro“ nutzen dagegen eine serielle Schnittstelle ([elitech-datareader](https://pypi.org/project/elitech-datareader/)), das ist ein anderes Protokoll.
-- Paketaufbau (aus `initializePacket:withCmd:withExtCmd:withAddr:withLen:withData:dataLen:`):
-
-  | Byte | Inhalt |
-  |---|---|
-  | 0–1 | `33 CC` (Kennung) |
-  | 2 | `00` |
-  | 3 | Paketlänge = Datenlänge + 12 |
-  | 4 | Befehl (`cmd`) |
-  | 5 | Unterbefehl (`extCmd`) |
-  | 6 | `00` |
-  | 7–8 | Adresse, big-endian |
-  | 9–10 | Länge, big-endian |
-  | 11 … | Nutzdaten |
-  | letztes | Prüfsumme: Summe aller vorherigen Bytes, 8 Bit |
-
-- Noch unbekannt: die Befehlsnummern (Geräteinfo, Konfiguration lesen/schreiben, Uhrzeit, Daten lesen), die Kodierung der Konfiguration, die Antwortpakete, VID/PID und die HID-Reportgröße.
-
-**Nächster Schritt: Mitschnitt mit echtem Gerät**
-
-1. Das normale ElitechLog beenden.
-2. `tools/hidspy/capture.sh` starten. Das Skript erzeugt eine ad-hoc signierte Kopie von ElitechLog mit einem kleinen HID-Protokollierer (das Original bleibt unverändert) und schreibt alle Pakete nach `tools/hidspy/hid.log`.
-3. Logger anstecken und warten, bis die Geräteinfos erscheinen.
-4. In **Konfigurieren** Werte einstellen und **„Parameter“** klicken. ⚠️ Das löscht die laufende Aufzeichnung auf dem Gerät, deshalb vorher die CSV vom Laufwerk sichern.
-5. Optional: Daten auslesen bzw. „Daten neu“, damit auch der Lesebefehl im Mitschnitt landet.
-6. App schließen und `hid.log` auswerten.
+- Mitschnitte mit einem echten RC-4H Pro haben Paketformat, Befehle, fast alle Konfigurationsfelder und das Auslesen der Messwerte entschlüsselt. Details und aufgezeichnete Pakete stehen in [tools/hidspy/PROTOCOL.md](tools/hidspy/PROTOCOL.md) (englisch). Offen ist noch die Kodierung negativer Messwerte.
+- Weitere Mitschnitte (z. B. von anderen Modellen) entstehen mit `tools/hidspy/capture.sh`: ElitechLog beenden, Skript starten, pro Speichern genau eine Einstellung ändern und die Schreibvorgänge in `tools/hidspy/hid.log` vergleichen. ⚠️ Speichern löscht die laufende Aufzeichnung auf dem Gerät, deshalb vorher die CSV vom Laufwerk sichern.
 
 **Umsetzung danach:**
 
