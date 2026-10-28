@@ -3,6 +3,7 @@
 import {
   configure,
   decodeConfig,
+  decodeStatus,
   LoggerNotFound,
   MODEL,
   readParams,
@@ -10,12 +11,13 @@ import {
   serialOf,
   validateConfig,
   type LoggerConfig,
+  type LoggerStatus,
   type Transport,
 } from './elitech';
 import type { ParsedReport } from './parser';
 import { connectedLoggers, usbAvailable } from './usb';
 
-export { InvalidConfig, LoggerNotFound, type LoggerConfig, type StartMode } from './elitech';
+export { InvalidConfig, LoggerNotFound, type LoggerConfig, type LoggerStatus, type StartMode } from './elitech';
 
 export const loggerAccess = usbAvailable;
 
@@ -48,6 +50,10 @@ export const readConfigs = (): Promise<ConnectedLogger[]> =>
     const params = await readParams(logger);
     return { serial: serialOf(params), model: MODEL, config: decodeConfig(params) };
   });
+
+/** Current reading, state and clock of every connected logger. Never opens the browser's device picker. */
+export const readStatus = (): Promise<LoggerStatus[]> =>
+  withLoggers(false, async (logger) => decodeStatus(await readParams(logger)));
 
 /** Reconfigures the logger with this serial number and sets its clock. This erases its recording. */
 export async function writeConfig(serial: string, config: LoggerConfig) {

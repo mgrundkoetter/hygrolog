@@ -283,6 +283,29 @@ main {
   font-size: 12.5px;
   color: var(--text-muted);
 }
+.device-live {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+.device-live.warn {
+  color: var(--danger);
+}
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+.live-dot.recording {
+  background: var(--series-3);
+}
+.live-dot.waiting {
+  background: var(--series-4);
+}
 
 .card {
   background: var(--surface-1);

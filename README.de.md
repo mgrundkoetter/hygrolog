@@ -32,7 +32,7 @@ Beide Quellen sind offen und brauchen keinen API-Schlüssel. Die Daten werden pr
 2. Die **CSV-Datei** in das App-Fenster ziehen oder über **CSV importieren** auswählen.
 3. Über **Gerät bearbeiten** einen Titel vergeben sowie Standort und Wetterquelle einstellen. Voreingestellt ist Malter (Dippoldiswalde); neue Geräte übernehmen den Standort des gerade angezeigten Geräts.
 4. Weitere Daten für ein Gerät: **Daten hochladen**. Ein neuer Logger: **Gerät hinzufügen** oder einfach seine CSV-Datei ins Fenster ziehen. Dateien landen immer bei dem Gerät, zu dem ihre Seriennummer gehört.
-5. In der Desktop-App sowie in Chrome oder Edge liest **Vom Logger lesen** einen angeschlossenen Logger direkt per USB aus, ohne CSV-Datei. **Logger konfigurieren** stellt Intervall, Startmodus, Zeitzone, Alarmgrenzen und die Uhr ein (getestet mit dem RC-4H Pro). Speichern löscht die Aufzeichnung auf dem Logger, deshalb importiert Hygrolog sie vorher.
+5. In der Desktop-App sowie in Chrome oder Edge liest **Vom Logger lesen** einen angeschlossenen Logger direkt per USB aus, ohne CSV-Datei. **Logger konfigurieren** stellt Intervall, Startmodus, Zeitzone, Alarmgrenzen und die Uhr ein (getestet mit dem RC-4H Pro). Speichern löscht die Aufzeichnung auf dem Logger, deshalb importiert Hygrolog sie vorher. Solange ein Logger angeschlossen ist, stehen sein Status, der aktuelle Messwert und die Uhrzeit unter dem Gerätenamen.
 
 > **Zeitbasis:** Die CSV enthält die Zeitzone, mit der der Logger konfiguriert wurde (`Time Base: UTC+00:00`). Wirken die Kurven gegenüber dem Wetter um ein oder zwei Stunden verschoben, lässt sich die Zeitbasis in der Liste *Importierte Dateien* pro Datei korrigieren.
 
@@ -97,7 +97,6 @@ Das Protokoll wurde aus Mitschnitten von ElitechLog mit einem echten RC-4H Pro e
 Noch offen:
 
 - Kodierung negativer Messwerte prüfen (ein Messwert unter 0 °C)
-- Live-Infos vom Logger (Status, aktueller Messwert) in der Oberfläche
 
 ## Lizenz
 

@@ -33,7 +33,7 @@ Both sources are open and need no API key. Data is cached per month. Months more
 2. Drag the **CSV file** into the app window or choose it via **Import CSV**.
 3. Use **Edit device** to give the device a title and set its location and weather source. The default is Malter (Dippoldiswalde, Saxony); new devices start with the location of the device currently shown.
 4. More data for a device: **Upload data**. A new logger: **Add device**, or simply drop its CSV file. Files always end up at the device named by their serial number.
-5. In the desktop app and in Chrome or Edge, **Read from logger** reads a connected logger directly over USB, without the CSV file, and **Configure logger** sets interval, start mode, time zone, alarm limits and the clock (tested with the RC-4H Pro). Saving a configuration erases the recording on the logger, so Hygrolog imports it first.
+5. In the desktop app and in Chrome or Edge, **Read from logger** reads a connected logger directly over USB, without the CSV file, and **Configure logger** sets interval, start mode, time zone, alarm limits and the clock (tested with the RC-4H Pro). Saving a configuration erases the recording on the logger, so Hygrolog imports it first. While a logger is connected, its state, current reading and clock appear under the device title.
 
 > **Time base:** The CSV contains the time zone the logger was configured with (`Time Base: UTC+00:00`). If the curves look shifted by an hour or two compared to the weather, you can correct the time base per file in the *Imported files* list.
 
@@ -98,7 +98,6 @@ The protocol was decoded from captures of ElitechLog with a real RC-4H Pro. The 
 Still open:
 
 - Check the encoding of negative measurements (a reading below 0 °C)
-- Live info from the logger (status, current reading) in the UI
 
 ## License
 

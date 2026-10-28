@@ -5,9 +5,11 @@ import {
   configure,
   decodeConfig,
   decodeLimit,
+  decodeStatus,
   encodeLimit,
   InvalidConfig,
   packet,
+  readParams,
   readReport,
   temperature,
   validateConfig,
@@ -78,6 +80,19 @@ describe('reading a recording', () => {
     csv.forEach(([, time, temp, hum], i) => {
       expect(new Date(r.rows[i].local).toISOString().slice(11, 19)).toBe(time);
       expect([r.rows[i].temp, r.rows[i].hum]).toEqual([Number(temp), Number(hum)]);
+    });
+  });
+
+  it('decodes the live status', async () => {
+    const s = decodeStatus(await readParams(replay(fixture('read-recording.log'))));
+    expect(s).toEqual({
+      serial: 'EFX266100504',
+      state: 'recording',
+      temp: 22,
+      hum: 44.1,
+      clock: Date.UTC(2026, 9, 28, 21, 17, 27),
+      tzOffsetMin: 60,
+      points: 43,
     });
   });
 

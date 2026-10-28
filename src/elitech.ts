@@ -218,6 +218,37 @@ export async function readReport(transport: Transport): Promise<ParsedReport> {
   };
 }
 
+// ---------- live status ----------
+
+export type LoggerState = 'waiting' | 'recording' | 'other';
+
+export interface LoggerStatus {
+  serial: string;
+  state: LoggerState;
+  temp: number | null;
+  hum: number | null;
+  /** The logger's clock, as wall-clock epoch ms in its time zone. */
+  clock: number | null;
+  tzOffsetMin: number;
+  points: number;
+}
+
+/** Status byte: 04 waiting for start, 07 recording; other values haven't been seen. */
+const STATES: Record<number, LoggerState> = { 0x04: 'waiting', 0x07: 'recording' };
+const LIVE_HUM = 126;
+const LIVE_TEMP = 134;
+const CLOCK = 136;
+
+export const decodeStatus = (params: Uint8Array): LoggerStatus => ({
+  serial: serialOf(params),
+  state: STATES[params[STATUS]] ?? 'other',
+  temp: temperature(be16(params, LIVE_TEMP)),
+  hum: humidity(be16(params, LIVE_HUM)),
+  clock: timestamp(params, CLOCK),
+  tzOffsetMin: tzOffsetMin(params),
+  points: be16(params, POINT_COUNT),
+});
+
 // ---------- configuration ----------
 
 export type StartMode = 'button' | 'immediate' | 'timed';

@@ -11,9 +11,11 @@ import {
   LoggerNotFound,
   readConfigs,
   readLoggers,
+  readStatus,
   writeConfig,
   type ConnectedLogger,
   type LoggerConfig,
+  type LoggerStatus,
   type StartMode,
 } from './logger';
 import { parseElitechCsv } from './parser';
@@ -93,6 +95,8 @@ const deviceProvider = (d: Device) => providerById(d.provider ?? settings.provid
 async function selectDevice(serial: string) {
   settings.selectedDevice = serial;
   saveSettings(settings);
+  renderLive(undefined);
+  if (loggerAccess) void refreshLive();
   renderDeviceList();
   renderDeviceHead();
   renderImports();
@@ -298,9 +302,56 @@ async function saveLoggerConfig() {
   try {
     await writeConfig(serial, config);
     toast(t().loggerConfigured(serial));
+    void refreshLive();
   } catch (e) {
     loggerError(e);
   }
+}
+
+// ---------- live status ----------
+
+const LIVE_POLL_MS = 10_000;
+/** Below this, clock drift is just the time the read took. */
+const CLOCK_TOLERANCE_MS = 60_000;
+
+function renderLive(s: LoggerStatus | undefined) {
+  const el = $('device-live');
+  el.hidden = !s;
+  if (!s) return;
+  const state = { recording: t().liveRecording, waiting: t().liveWaiting, other: t().liveOther }[s.state];
+  const parts = [state];
+  if (s.temp !== null) parts.push(`${fmtNum(s.temp)} °C`);
+  if (s.hum !== null) parts.push(`${fmtNum(s.hum)} %`);
+  parts.push(t().liveReadings(s.points.toLocaleString(locale())));
+  // The clock is wall-clock time encoded as UTC, like `Reading.local`.
+  const drift = s.clock === null ? 0 : s.clock - (Date.now() + s.tzOffsetMin * 60_000);
+  const off = Math.abs(drift) >= CLOCK_TOLERANCE_MS;
+  if (off) parts.push(t().liveClockOff(Math.round(Math.abs(drift) / 60_000)));
+  else if (s.clock !== null) parts.push(t().liveClock(new Date(s.clock).toLocaleTimeString(locale(), { timeZone: 'UTC' })));
+  el.classList.toggle('warn', off);
+  el.innerHTML = `<span class="live-dot ${s.state}"></span>${esc(parts.join(' · '))}`;
+}
+
+/** Shows the selected device's live status while it is connected. */
+async function refreshLive() {
+  const serial = settings.selectedDevice;
+  let status: LoggerStatus | undefined;
+  try {
+    status = (await readStatus()).find((s) => s.serial === serial);
+  } catch {
+    // No logger connected, or it was unplugged mid-read.
+  }
+  if (serial === settings.selectedDevice) renderLive(status);
+}
+
+function startLivePolling() {
+  if (!loggerAccess) return;
+  const tick = () => {
+    if (!document.hidden) void refreshLive();
+  };
+  tick();
+  setInterval(tick, LIVE_POLL_MS);
+  document.addEventListener('visibilitychange', tick);
 }
 
 // ---------- range ----------
@@ -775,6 +826,7 @@ async function init() {
   translateDocument();
   bindControls();
   await reloadMeta();
+  startLivePolling();
   if (current()) await presetRange(30);
 }
 
