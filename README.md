@@ -14,6 +14,7 @@ A small, free viewer for **Elitech RC temperature and humidity data loggers** (t
 - Nights are shaded in the chart, sun times are shown in the tooltip
 - Several loggers: a sidebar lists every device (recognized by its serial number) with a small picture showing its latest reading. Each device gets its own title (default "Device 1", "Device 2", …), its own uploads and its own location and weather source, so loggers in different places are compared with the right weather
 - Importing the same recording more than once is harmless: duplicate readings are merged
+- Interface in English, German, Simplified and Traditional Chinese: the language follows the system language and can be changed in the settings
 - Everything stays local: measurements and the weather cache live in the app (IndexedDB). Only weather requests go over the network.
 
 - User interface in English and German: detected automatically from the system language, switchable in the settings
@@ -82,7 +83,7 @@ src/humidity.ts   dew point / absolute humidity (Magnus formula)
 src/aggregate.ts  hourly/daily means, gap detection, statistics
 src/chart.ts      chart (Apache ECharts)
 src/deviceArt.ts  stylized device pictures for the device picker
-src/i18n.ts       UI strings (English, German) and language detection
+src/i18n.ts       UI strings (English, German, Simplified and Traditional Chinese) and language detection
 src/main.ts       user interface
 src-tauri/        desktop shell (Tauri 2)
 ```

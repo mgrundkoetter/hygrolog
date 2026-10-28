@@ -13,7 +13,7 @@ import langDE from 'echarts/i18n/langDE-obj.js';
 import type { EChartsCoreOption } from 'echarts/core';
 import { aggregate, breakGaps, type ConcreteResolution, type Point } from './aggregate';
 import { humidityUnits, type HumidityMode } from './humidity';
-import { lang, locale, t } from './i18n';
+import { baseLang, lang, locale, t } from './i18n';
 import { sunTimes, type Night } from './sun';
 import type { Location } from './types';
 
@@ -89,7 +89,7 @@ export class Chart {
     }
     if (!this.chart) {
       this.chartLang = lang();
-      this.chart = echarts.init(this.el, undefined, { renderer: 'canvas', locale: lang().toUpperCase() });
+      this.chart = echarts.init(this.el, undefined, { renderer: 'canvas', locale: baseLang().toUpperCase() });
       this.observer ??= new ResizeObserver(() => this.chart?.resize());
       this.observer.observe(this.el);
     }

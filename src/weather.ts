@@ -1,5 +1,5 @@
 import { getWeatherCache, putWeatherCache } from './db';
-import { lang, t } from './i18n';
+import { baseLang, t } from './i18n';
 import type { Location, WeatherPoint } from './types';
 
 export interface MonthData {
@@ -182,7 +182,7 @@ export interface GeoResult {
 
 export async function searchPlace(query: string): Promise<GeoResult[]> {
   const json = await getJson(
-    `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=8&language=${lang()}&format=json`,
+    `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=8&language=${baseLang()}&format=json`,
   );
   return (json.results ?? []).map((r: any) => ({
     name: r.name,

@@ -13,6 +13,13 @@ describe('detectLanguage', () => {
     expect(detectLanguage()).toBe('de');
   });
 
+  it('tells Simplified from Traditional Chinese', () => {
+    for (const [tag, lang] of [['zh-CN', 'zh'], ['zh', 'zh'], ['zh-Hans-SG', 'zh'], ['zh-TW', 'zh-TW'], ['zh-Hant', 'zh-TW'], ['zh-HK', 'zh-TW']]) {
+      stubLanguages([tag]);
+      expect(detectLanguage(), tag).toBe(lang);
+    }
+  });
+
   it('falls back to English', () => {
     stubLanguages(['fr-FR', 'it']);
     expect(detectLanguage()).toBe('en');
@@ -32,7 +39,7 @@ describe('static markup', () => {
     ...[...html.matchAll(/data-i18n-attr="([^"]+)"/g)].flatMap((m) => m[1].split(';').map((p) => p.split(':')[1])),
   ];
 
-  it.each(['en', 'de'] as const)('only references keys that exist (%s)', (lang) => {
+  it.each(['en', 'de', 'zh', 'zh-TW'] as const)('only references keys that exist (%s)', (lang) => {
     setLanguage(lang);
     const messages = t() as unknown as Record<string, unknown>;
     expect(keys.length).toBeGreaterThan(40);

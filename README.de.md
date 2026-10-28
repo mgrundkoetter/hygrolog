@@ -14,7 +14,7 @@ Eine kleine, freie Auswertungs-App für **Elitech-RC-Temperatur- und Feuchtelogg
 - Nächte werden im Graphen schattiert, Sonnenzeiten stehen im Tooltip
 - Mehrere Logger: Eine Seitenleiste listet alle Geräte (erkannt an der Seriennummer) mit einem kleinen Bild, das den letzten Messwert zeigt. Jedes Gerät hat einen eigenen Titel (Standard „Gerät 1“, „Gerät 2“, …), eigene Uploads sowie eigenen Standort und eigene Wetterquelle. So werden Logger an verschiedenen Orten mit dem passenden Wetter verglichen
 - Mehrfaches Importieren derselben Aufzeichnung ist unproblematisch, doppelte Messpunkte werden zusammengeführt
-- Oberfläche auf Deutsch und Englisch: Die Sprache wird automatisch aus der Systemsprache erkannt und lässt sich in den Einstellungen umstellen
+- Oberfläche auf Deutsch, Englisch sowie vereinfachtem und traditionellem Chinesisch: Die Sprache wird automatisch aus der Systemsprache erkannt und lässt sich in den Einstellungen umstellen
 - Alles bleibt lokal: Messdaten und Wetter-Cache liegen in der App (IndexedDB). Ins Netz gehen nur die Wetteranfragen.
 
 ## Wetterdaten
@@ -81,7 +81,7 @@ src/humidity.ts   Taupunkt / absolute Feuchte (Magnus-Formel)
 src/aggregate.ts  Stunden-/Tagesmittel, Lückenerkennung, Statistik
 src/chart.ts      Graph (Apache ECharts)
 src/deviceArt.ts  stilisierte Gerätebilder für die Geräteauswahl
-src/i18n.ts       Oberflächentexte (Englisch, Deutsch) und Spracherkennung
+src/i18n.ts       Oberflächentexte (Englisch, Deutsch, vereinfachtes und traditionelles Chinesisch) und Spracherkennung
 src/main.ts       Oberfläche
 src-tauri/        Desktop-Hülle (Tauri 2)
 ```
