@@ -724,6 +724,42 @@ dialog::backdrop {
 }
 .dialog-foot {
   justify-content: flex-end;
+  /* Stays in view when a long dialog scrolls. */
+  position: sticky;
+  bottom: 0;
+  margin: 0 -22px -20px;
+  padding: 12px 22px 20px;
+  background: var(--surface-1);
+  border-top: 1px solid var(--border);
+}
+details.section > :not(summary) + :not(summary) {
+  margin-top: 10px;
+}
+details.section > summary {
+  font-weight: 650;
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+details.section > summary::-webkit-details-marker {
+  display: none;
+}
+details.section > summary::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 0.15s;
+}
+details.section[open] > summary {
+  margin-bottom: 10px;
+}
+details.section[open] > summary::before {
+  transform: rotate(45deg);
 }
 fieldset {
   border: 0;

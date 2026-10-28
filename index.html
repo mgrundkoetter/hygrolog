@@ -238,18 +238,18 @@
           <p class="muted fieldset-hint" data-i18n="lgTimeZoneHint">The logger doesn’t switch to daylight saving time. Standard time keeps the readings consistent all year.</p>
         </fieldset>
 
-        <fieldset>
-          <legend data-i18n="lgLimits">Alarm limits</legend>
+        <details class="section">
+          <summary data-i18n="lgLimits">Alarm limits</summary>
           <div class="form-grid">
             <label class="field"><span data-i18n="lgTempHigh">Temperature high (°C)</span><input id="lg-temp-high" type="number" step="0.1" min="-40" max="85" placeholder="off" data-i18n-attr="placeholder:lgOff" /></label>
             <label class="field"><span data-i18n="lgTempLow">Temperature low (°C)</span><input id="lg-temp-low" type="number" step="0.1" min="-40" max="85" placeholder="off" data-i18n-attr="placeholder:lgOff" /></label>
             <label class="field"><span data-i18n="lgHumHigh">Humidity high (%)</span><input id="lg-hum-high" type="number" step="0.1" min="0" max="100" required /></label>
             <label class="field"><span data-i18n="lgHumLow">Humidity low (%)</span><input id="lg-hum-low" type="number" step="0.1" min="0" max="100" required /></label>
           </div>
-        </fieldset>
+        </details>
 
-        <fieldset>
-          <legend data-i18n="lgDevice">Device</legend>
+        <details class="section">
+          <summary data-i18n="lgDevice">Device</summary>
           <div class="form-grid">
             <label class="field"><span data-i18n="lgAlarmBeeps">Audible alarm</span>
               <select id="lg-beeps">
@@ -272,7 +272,7 @@
             <label class="field inline"><input id="lg-cyclic" type="checkbox" /><span data-i18n="lgCyclic">Cyclic logging (overwrites the oldest readings when full)</span></label>
             <label class="field inline"><input id="lg-key-tone" type="checkbox" /><span data-i18n="lgKeyTone">Key tone</span></label>
           </div>
-        </fieldset>
+        </details>
 
         <p class="erase-warning" data-i18n="lgEraseWarning">Saving restarts the logger and erases its recording. Hygrolog imports the recording first.</p>
 

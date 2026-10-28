@@ -262,6 +262,7 @@ async function openLoggerDialog() {
   field('lg-cyclic').checked = c.cyclic;
   field('lg-key-tone').checked = c.keyTone;
   syncStartFields();
+  loggerDialog.querySelectorAll('details').forEach((d) => (d.open = false));
   loggerDialog.returnValue = '';
   loggerDialog.showModal();
 }
@@ -705,6 +706,8 @@ function bindControls() {
   // Like ElitechLog: switching on cyclic logging or the alarm switches pause off; it can be turned back on.
   $('lg-cyclic').addEventListener('change', () => field('lg-cyclic').checked && (field('lg-pause').checked = false));
   $('lg-beeps').addEventListener('change', () => field('lg-beeps').value !== '0' && (field('lg-pause').checked = false));
+  // A closed section can't show the browser's hint for an invalid field, so open it first.
+  loggerDialog.addEventListener('invalid', (e) => (e.target as HTMLElement).closest('details')?.setAttribute('open', ''), true);
   loggerDialog.addEventListener('close', () => {
     if (loggerDialog.returnValue === 'save') void saveLoggerConfig();
   });
