@@ -121,13 +121,15 @@ ElitechLog reads 12 points per request from index 0 until the count from paramet
 1. Read the whole parameter block.
 2. Change the known fields and leave unknown bytes as they were read.
 3. Set 40–46 to the current time in the target time zone. The clock runs in that zone's local time, including half-hour offsets the time-zone byte cannot hold.
-4. Write the block in 50-byte chunks from offset 0; each chunk is acknowledged with `01`.
+4. Write offsets 0–349 in 50-byte chunks; each chunk is acknowledged with `01`. ElitechLog never writes the last two bytes.
 5. Send `c0/02` with payload `02`. It erases the recording on the device, so read the measurements first.
 
-ElitechLog applies two rules that Hygrolog should copy or deliberately drop:
+Hygrolog does this in `src-tauri/src/elitech/config.rs`. Its tests re-encode all 27 captured writes and get ElitechLog's bytes back, apart from the dialog-state bytes below. It deals with ElitechLog's own rules as follows:
 
-- It turns pause off whenever cyclic logging or the audible alarm is switched on, and resets H1's alarm type and delay when its limit is edited.
-- Its *daylight saving time* option only subtracts one hour from the time it writes, whatever the date. Hygrolog should not offer it, and should write standard time with byte 341 set to `01`.
+- ElitechLog turns pause off whenever cyclic logging or the audible alarm is switched on, but lets the user turn it back on. Hygrolog's form does the same.
+- ElitechLog resets H1's alarm type and delay when its limit is edited. Hygrolog keeps both, since it doesn't offer them.
+- ElitechLog's *daylight saving time* option only subtracts one hour from the time it writes, whatever the date. Hygrolog doesn't offer it, writes standard time and leaves byte 341 as read.
+- For bytes 35 and 39, Hygrolog writes what a fresh ElitechLog dialog writes for the chosen start mode: `00`/`c1` for the button, `02`/`00` otherwise.
 
 ## Open questions
 

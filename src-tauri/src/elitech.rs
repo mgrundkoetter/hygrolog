@@ -4,25 +4,33 @@ use serde::Serialize;
 use std::fmt;
 use std::time::Duration;
 
+pub mod config;
+
 pub const VENDOR_ID: u16 = 0x246c;
 pub const PRODUCT_ID: u16 = 0x9001;
+/// The only model this VID/PID has been seen on; matches the CSV's "Device Code".
+const MODEL: &str = "RC-4HPro";
 
 const CMD_READ_POINTS: u8 = 0x01;
 const CMD_READ_PARAMS: u8 = 0x03;
+const CMD_WRITE_PARAMS: u8 = 0x04;
 const CMD_READ_STATS: u8 = 0x05;
+const CMD_COMMIT: u8 = 0xc0;
 
 const PARAMS_LEN: u16 = 352;
 const PARAMS_CHUNK: u16 = 50;
 const STATS_CHUNK: u16 = 48;
 const POINTS_PER_READ: u16 = 12;
 
-const TIMEOUT: Duration = Duration::from_secs(2);
+/// The commit after a configuration write takes up to 1.3 s.
+const TIMEOUT: Duration = Duration::from_secs(5);
 
 #[derive(Debug)]
 pub enum Error {
   NotFound,
   Usb(String),
   Protocol(String),
+  Invalid(String),
 }
 
 impl fmt::Display for Error {
@@ -32,6 +40,7 @@ impl fmt::Display for Error {
       Error::NotFound => f.write_str("not-found"),
       Error::Usb(m) => write!(f, "USB: {m}"),
       Error::Protocol(m) => write!(f, "protocol: {m}"),
+      Error::Invalid(m) => f.write_str(m),
     }
   }
 }
@@ -75,18 +84,25 @@ fn checksum(bytes: &[u8]) -> u8 {
   bytes.iter().fold(0u8, |sum, b| sum.wrapping_add(*b))
 }
 
-fn request(cmd: u8, addr: u16, len: u16) -> Vec<u8> {
+/// For a read, `len` is how much to read and `payload` is empty; for a write, `len` is the payload length.
+fn packet(cmd: u8, ext: u8, addr: u16, len: u16, payload: &[u8]) -> Vec<u8> {
   let [a1, a0] = addr.to_be_bytes();
   let [l1, l0] = len.to_be_bytes();
-  let mut p = vec![0x33, 0xcc, 0x00, 12, cmd, 0x00, 0x00, a1, a0, l1, l0];
+  let mut p = vec![0x33, 0xcc, 0x00, payload.len() as u8 + 12, cmd, ext, 0x00, a1, a0, l1, l0];
+  p.extend_from_slice(payload);
   p.push(checksum(&p));
   p
 }
 
 /// Sends a read request and returns the validated payload.
 fn call(t: &mut impl Transport, cmd: u8, addr: u16, len: u16) -> Result<Vec<u8>, Error> {
-  let req = request(cmd, addr, len);
-  let resp = t.exchange(&req)?;
+  send(t, &packet(cmd, 0, addr, len, &[]))
+}
+
+/// Sends a packet and returns the payload of the matching response.
+fn send(t: &mut impl Transport, req: &[u8]) -> Result<Vec<u8>, Error> {
+  let (cmd, addr) = (req[4], u16::from_be_bytes([req[7], req[8]]));
+  let resp = t.exchange(req)?;
   let bad = |what: &str| Error::Protocol(format!("{what} (cmd {cmd:02x}, address {addr})"));
 
   if resp.len() < 12 || resp[..2] != [0x33, 0xcc] {
@@ -96,7 +112,7 @@ fn call(t: &mut impl Transport, cmd: u8, addr: u16, len: u16) -> Result<Vec<u8>,
   if end < 12 || end > resp.len() || checksum(&resp[..end - 1]) != resp[end - 1] {
     return Err(bad("bad length or checksum"));
   }
-  if resp[4] != cmd || resp[7..9] != req[7..9] {
+  if resp[4..6] != req[4..6] || resp[7..9] != req[7..9] {
     return Err(bad("device rejected the request"));
   }
   Ok(resp[11..end - 1].to_vec())
@@ -141,6 +157,29 @@ fn days_from_civil(y: i64, m: i64, d: i64) -> i64 {
   era * 146_097 + doe - 719_468
 }
 
+/// Inverse of `days_from_civil`.
+fn civil_from_days(days: i64) -> (i64, i64, i64) {
+  let z = days + 719_468;
+  let era = z.div_euclid(146_097);
+  let doe = z - era * 146_097;
+  let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+  let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+  let mp = (5 * doy + 2) / 153;
+  let d = doy - (153 * mp + 2) / 5 + 1;
+  let m = if mp < 10 { mp + 3 } else { mp - 9 };
+  (yoe + era * 400 + if m <= 2 { 1 } else { 0 }, m, d)
+}
+
+/// Encodes wall-clock epoch ms as a logger time stamp. The weekday counts from Sunday = 1, like ElitechLog.
+fn encode_timestamp(ms: i64) -> [u8; 7] {
+  let secs = ms.div_euclid(1000);
+  let days = secs.div_euclid(86_400);
+  let tod = secs.rem_euclid(86_400);
+  let (y, m, d) = civil_from_days(days);
+  let weekday = (days + 4).rem_euclid(7) + 1;
+  [(y - 2000) as u8, m as u8, weekday as u8, d as u8, (tod / 3600) as u8, (tod / 60 % 60) as u8, (tod % 60) as u8]
+}
+
 /// Logger time stamp (year − 2000, month, weekday, day, hour, minute, second) as wall-clock epoch ms.
 fn timestamp(b: &[u8]) -> Option<i64> {
   let [y, mo, _weekday, d, h, mi, s] = <[u8; 7]>::try_from(b).ok()?;
@@ -160,7 +199,7 @@ fn duration_label(secs: u32) -> String {
 
 // ---------- reading ----------
 
-pub fn read_report(t: &mut impl Transport) -> Result<Report, Error> {
+fn read_params(t: &mut impl Transport) -> Result<Vec<u8>, Error> {
   let mut params = Vec::with_capacity(PARAMS_LEN as usize);
   while params.len() < PARAMS_LEN as usize {
     let chunk = call(t, CMD_READ_PARAMS, params.len() as u16, PARAMS_CHUNK)?;
@@ -172,6 +211,30 @@ pub fn read_report(t: &mut impl Transport) -> Result<Report, Error> {
   if params.len() < PARAMS_LEN as usize {
     return Err(Error::Protocol(format!("parameter block has only {} bytes", params.len())));
   }
+  Ok(params)
+}
+
+/// Writes the parameter block the way ElitechLog does (offsets 0–349; the last two bytes are never
+/// written), then commits it. The commit restarts the logger and erases its recording.
+fn write_params(t: &mut impl Transport, params: &[u8]) -> Result<(), Error> {
+  for addr in (0..PARAMS_LEN - PARAMS_CHUNK + 1).step_by(PARAMS_CHUNK as usize) {
+    let chunk = &params[addr as usize..(addr + PARAMS_CHUNK) as usize];
+    if send(t, &packet(CMD_WRITE_PARAMS, 0, addr, PARAMS_CHUNK, chunk))? != [1] {
+      return Err(Error::Protocol(format!("write at {addr} not acknowledged")));
+    }
+  }
+  if send(t, &packet(CMD_COMMIT, 0x02, 0, 1, &[0x02]))? != [1] {
+    return Err(Error::Protocol("commit not acknowledged".into()));
+  }
+  Ok(())
+}
+
+fn serial(params: &[u8]) -> String {
+  ascii(&params[2..14])
+}
+
+pub fn read_report(t: &mut impl Transport) -> Result<Report, Error> {
+  let params = read_params(t)?;
 
   // The time-zone byte holds whole hours modulo 24.
   let tz_hours = params[36] as i32;
@@ -201,8 +264,8 @@ pub fn read_report(t: &mut impl Transport) -> Result<Report, Error> {
   }
 
   Ok(Report {
-    serial: ascii(&params[2..14]),
-    model: "RC-4HPro".into(),
+    serial: serial(&params),
+    model: MODEL.into(),
     trip_id: ascii(&params[16..23]),
     interval: duration_label(interval_ms as u32 / 1000),
     tz_offset_min: tz_hours * 60,
@@ -232,8 +295,8 @@ impl Transport for Hid {
   }
 }
 
-/// Reads every connected logger.
-pub fn read_connected() -> Result<Vec<Report>, Error> {
+/// Opens every connected logger.
+fn connected() -> Result<Vec<Hid>, Error> {
   let api = hidapi::HidApi::new()?;
   let mut paths: Vec<_> = api
     .device_list()
@@ -244,7 +307,12 @@ pub fn read_connected() -> Result<Vec<Report>, Error> {
   if paths.is_empty() {
     return Err(Error::NotFound);
   }
-  paths.iter().map(|p| read_report(&mut Hid(api.open_path(p)?))).collect()
+  paths.iter().map(|p| Ok(Hid(api.open_path(p)?))).collect()
+}
+
+/// Reads every connected logger.
+pub fn read_connected() -> Result<Vec<Report>, Error> {
+  connected()?.iter_mut().map(read_report).collect()
 }
 
 #[cfg(test)]

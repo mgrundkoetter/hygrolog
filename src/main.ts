@@ -5,7 +5,7 @@ import * as db from './db';
 import { deviceArt, modelLabel } from './deviceArt';
 import { convertHumidity, humidityUnits, type HumidityMode } from './humidity';
 import { languageNames, locale, setLanguage, t, translateDocument, type LangSetting } from './i18n';
-import { loggerAccess, readLoggers } from './logger';
+import { loggerAccess, readConfigs, readLoggers, writeConfig, type ConnectedLogger, type LoggerConfig, type StartMode } from './logger';
 import { parseElitechCsv } from './parser';
 import { loadSettings, saveSettings, type Settings } from './settings';
 import { nights } from './sun';
@@ -136,14 +136,20 @@ async function importFiles(files: FileList | File[], target?: string) {
   await showImported(lastSerial);
 }
 
-/** Reads every connected logger over USB and imports its recording. */
-async function importFromLoggers() {
+function loggerError(e: unknown) {
+  const message = String(e);
+  toast(message === 'not-found' ? t().loggerNotFound : t().loggerFailed(message), true);
+}
+
+/** Reads every connected logger over USB and imports its recording. Returns false if reading failed. */
+async function importFromLoggers(): Promise<boolean> {
   const buttons = [$<HTMLButtonElement>('btn-read'), $<HTMLButtonElement>('btn-read-empty')];
   const label = (text: string) =>
     buttons.forEach((b) => ((b.querySelector('span') ?? b).textContent = text));
   buttons.forEach((b) => (b.disabled = true));
   label(t().readingLogger);
   let lastSerial: string | undefined;
+  let ok = true;
   try {
     const defaults = newDeviceDefaults();
     for (const report of await readLoggers()) {
@@ -157,14 +163,133 @@ async function importFromLoggers() {
       lastSerial = report.serial;
     }
   } catch (e) {
-    const message = String(e);
-    toast(message === 'not-found' ? t().loggerNotFound : t().loggerFailed(message), true);
+    loggerError(e);
+    ok = false;
   } finally {
     buttons.forEach((b) => (b.disabled = false));
     label(t().readLogger);
   }
   await reloadMeta();
   if (lastSerial) await showImported(lastSerial);
+  return ok;
+}
+
+// ---------- logger dialog ----------
+
+const loggerDialog = $<HTMLDialogElement>('logger-dialog');
+let configuring: ConnectedLogger | undefined;
+
+const INTERVALS = [10, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200];
+const DELAYS = [0, 60, 300, 600, 1800, 3600];
+const HOUR = 3_600_000;
+
+function durationLabel(secs: number) {
+  if (!secs) return t().lgOff;
+  const parts = [[Math.floor(secs / 3600), 'h'], [Math.floor(secs / 60) % 60, 'min'], [secs % 60, 's']] as const;
+  return parts.filter(([n]) => n).map(([n, unit]) => `${n} ${unit}`).join(' ');
+}
+
+/** Offers `values` plus the logger's current value, which may lie outside them. */
+function fillSelect(id: string, values: number[], current: number, label: (v: number) => string) {
+  const select = $<HTMLSelectElement>(id);
+  const all = [...new Set([...values, current])].sort((a, b) => a - b);
+  select.replaceChildren(...all.map((v) => new Option(label(v), String(v))));
+  select.value = String(current);
+}
+
+// datetime-local values are wall-clock times, like the logger's: read and write them as UTC.
+const toLocalInput = (ms: number) => new Date(ms).toISOString().slice(0, 19);
+const fromLocalInput = (value: string) => Date.parse(value + 'Z');
+
+const field = (id: string) => $<HTMLInputElement>(id);
+
+function syncStartFields() {
+  const mode = field('lg-start-mode').value;
+  $('lg-start-at-field').hidden = mode !== 'timed';
+  $('lg-delay-field').hidden = mode !== 'button';
+  field('lg-start-at').required = mode === 'timed';
+}
+
+async function openLoggerDialog() {
+  const button = $<HTMLButtonElement>('btn-configure');
+  button.disabled = true;
+  try {
+    const loggers = await readConfigs();
+    configuring = loggers.find((l) => l.serial === settings.selectedDevice) ?? loggers[0];
+  } catch (e) {
+    loggerError(e);
+    return;
+  } finally {
+    button.disabled = false;
+  }
+  const { serial, model, config: c } = configuring;
+  const known = devices.find((d) => d.serial === serial);
+  $('lg-ident').textContent = [known && deviceTitle(known), modelLabel(model), `${t().serialNo} ${serial}`].filter(Boolean).join(' · ');
+
+  fillSelect('lg-interval', INTERVALS, c.intervalSecs, durationLabel);
+  fillSelect('lg-delay', DELAYS, c.startDelaySecs, durationLabel);
+  fillSelect('lg-tz', Array.from({ length: 25 }, (_, i) => (i - 12) * 60), c.tzOffsetMin, offsetLabel);
+  fillSelect('lg-display', [1, 2], c.displayTime, (v) => ({ 1: '15 s', 2: '30 s' })[v] ?? t().lgDisplayCode(v));
+  field('lg-start-mode').value = c.startMode;
+  const nextHour = Math.ceil((Date.now() + c.tzOffsetMin * 60_000) / HOUR) * HOUR;
+  field('lg-start-at').value = toLocalInput(c.startMode === 'timed' ? c.startAt : nextHour);
+  field('lg-trip').value = c.tripId;
+  field('lg-desc').value = c.description;
+  field('lg-temp-high').value = c.tempHigh?.toString() ?? '';
+  field('lg-temp-low').value = c.tempLow?.toString() ?? '';
+  field('lg-hum-high').value = String(c.humHigh);
+  field('lg-hum-low').value = String(c.humLow);
+  field('lg-beeps').value = String(c.alarmBeeps);
+  field('lg-unit').value = c.fahrenheit ? 'f' : 'c';
+  field('lg-pdf').value = c.pdfChinese ? 'zh' : 'en';
+  field('lg-stop-button').checked = c.stopByButton;
+  field('lg-pause').checked = c.pause;
+  field('lg-cyclic').checked = c.cyclic;
+  field('lg-key-tone').checked = c.keyTone;
+  syncStartFields();
+  loggerDialog.returnValue = '';
+  loggerDialog.showModal();
+}
+
+function loggerFormConfig(base: LoggerConfig): LoggerConfig {
+  const startMode = field('lg-start-mode').value as StartMode;
+  const optional = (id: string) => (field(id).value === '' ? null : Number(field(id).value));
+  return {
+    ...base,
+    intervalSecs: Number(field('lg-interval').value),
+    startMode,
+    startAt: startMode === 'timed' ? fromLocalInput(field('lg-start-at').value) : base.startAt,
+    startDelaySecs: startMode === 'button' ? Number(field('lg-delay').value) : 0,
+    tzOffsetMin: Number(field('lg-tz').value),
+    tripId: field('lg-trip').value,
+    description: field('lg-desc').value,
+    tempHigh: optional('lg-temp-high'),
+    tempLow: optional('lg-temp-low'),
+    humHigh: Number(field('lg-hum-high').value),
+    humLow: Number(field('lg-hum-low').value),
+    alarmBeeps: Number(field('lg-beeps').value),
+    displayTime: Number(field('lg-display').value),
+    fahrenheit: field('lg-unit').value === 'f',
+    pdfChinese: field('lg-pdf').value === 'zh',
+    stopByButton: field('lg-stop-button').checked,
+    pause: field('lg-pause').checked,
+    cyclic: field('lg-cyclic').checked,
+    keyTone: field('lg-key-tone').checked,
+  };
+}
+
+/** Saves the recording first, because the new configuration erases it. */
+async function saveLoggerConfig() {
+  if (!configuring) return;
+  const { serial } = configuring;
+  const config = loggerFormConfig(configuring.config);
+  if (!(await importFromLoggers())) return;
+  try {
+    await writeConfig(serial, config);
+    toast(t().loggerConfigured(serial));
+  } catch (e) {
+    loggerError(e);
+  }
 }
 
 // ---------- range ----------
@@ -512,6 +637,15 @@ function bindControls() {
     $(id).hidden = !loggerAccess;
     $(id).addEventListener('click', () => void importFromLoggers());
   }
+  $('btn-configure').hidden = !loggerAccess;
+  $('btn-configure').addEventListener('click', () => void openLoggerDialog());
+  $('lg-start-mode').addEventListener('change', syncStartFields);
+  // Like ElitechLog: switching on cyclic logging or the alarm switches pause off; it can be turned back on.
+  $('lg-cyclic').addEventListener('change', () => field('lg-cyclic').checked && (field('lg-pause').checked = false));
+  $('lg-beeps').addEventListener('change', () => field('lg-beeps').value !== '0' && (field('lg-pause').checked = false));
+  loggerDialog.addEventListener('close', () => {
+    if (loggerDialog.returnValue === 'save') void saveLoggerConfig();
+  });
   fileInput.addEventListener('change', () => {
     if (fileInput.files?.length) void importFiles(fileInput.files, uploadTarget);
     fileInput.value = '';

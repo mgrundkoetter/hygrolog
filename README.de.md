@@ -32,7 +32,7 @@ Beide Quellen sind offen und brauchen keinen API-Schlüssel. Die Daten werden pr
 2. Die **CSV-Datei** in das App-Fenster ziehen oder über **CSV importieren** auswählen.
 3. Über **Gerät bearbeiten** einen Titel vergeben sowie Standort und Wetterquelle einstellen. Voreingestellt ist Malter (Dippoldiswalde); neue Geräte übernehmen den Standort des gerade angezeigten Geräts.
 4. Weitere Daten für ein Gerät: **Daten hochladen**. Ein neuer Logger: **Gerät hinzufügen** oder einfach seine CSV-Datei ins Fenster ziehen. Dateien landen immer bei dem Gerät, zu dem ihre Seriennummer gehört.
-5. In der Desktop-App liest **Vom Logger lesen** einen angeschlossenen Logger direkt per USB aus, ohne CSV-Datei (getestet mit dem RC-4H Pro).
+5. In der Desktop-App liest **Vom Logger lesen** einen angeschlossenen Logger direkt per USB aus, ohne CSV-Datei. **Logger konfigurieren** stellt Intervall, Startmodus, Zeitzone, Alarmgrenzen und die Uhr ein (getestet mit dem RC-4H Pro). Speichern löscht die Aufzeichnung auf dem Logger, deshalb importiert Hygrolog sie vorher.
 
 > **Zeitbasis:** Die CSV enthält die Zeitzone, mit der der Logger konfiguriert wurde (`Time Base: UTC+00:00`). Wirken die Kurven gegenüber dem Wetter um ein oder zwei Stunden verschoben, lässt sich die Zeitbasis in der Liste *Importierte Dateien* pro Datei korrigieren.
 
@@ -85,22 +85,17 @@ src-tauri/        Desktop-Hülle (Tauri 2)
 
 Weitere Elitech-Modelle (RC-4 Pro, RC-5+, …) schreiben dasselbe CSV-Format und sollten deshalb ebenfalls funktionieren. Über Beispieldateien anderer Modelle freue ich mich.
 
-## TODO: Gerät direkt per USB konfigurieren
+## USB-Zugriff
 
-Ziel: Hygrolog soll den Logger selbst konfigurieren können (Intervall, Startmodus, Grenzwerte, Zeitzone, Uhrzeit vom Rechner übernehmen), damit die Hersteller-App gar nicht mehr nötig ist. Das Auslesen der Messwerte per USB funktioniert in der Desktop-App bereits.
+Die Pro-Modelle melden sich per USB als Laufwerk (PDF/CSV) **und zusätzlich als HID-Gerät**. Über HID liest die Desktop-App Messwerte aus und schreibt die Konfiguration, die Hersteller-App ElitechLog ist damit nicht mehr nötig. Ältere RC-4/RC-5 ohne „Pro“ nutzen dagegen eine serielle Schnittstelle ([elitech-datareader](https://pypi.org/project/elitech-datareader/)), das ist ein anderes Protokoll.
 
-**Bisherige Erkenntnisse:**
+Das Protokoll wurde aus Mitschnitten von ElitechLog mit einem echten RC-4H Pro entschlüsselt. Details und aufgezeichnete Pakete stehen in [tools/hidspy/PROTOCOL.md](tools/hidspy/PROTOCOL.md) (englisch). Weitere Mitschnitte (z. B. von anderen Modellen) entstehen mit `tools/hidspy/capture.sh`: ElitechLog beenden, Skript starten, pro Speichern genau eine Einstellung ändern und die Schreibvorgänge in `tools/hidspy/hid.log` vergleichen. ⚠️ Speichern löscht die laufende Aufzeichnung auf dem Gerät, deshalb vorher die CSV vom Laufwerk sichern.
 
-- Die Pro-Modelle melden sich per USB als Laufwerk (PDF/CSV) **und zusätzlich als HID-Gerät**. ElitechLog nutzt dafür [hidapi](https://github.com/libusb/hidapi). Ältere RC-4/RC-5 ohne „Pro“ nutzen dagegen eine serielle Schnittstelle ([elitech-datareader](https://pypi.org/project/elitech-datareader/)), das ist ein anderes Protokoll.
-- Mitschnitte mit einem echten RC-4H Pro haben Paketformat, Befehle, fast alle Konfigurationsfelder und das Auslesen der Messwerte entschlüsselt. Details und aufgezeichnete Pakete stehen in [tools/hidspy/PROTOCOL.md](tools/hidspy/PROTOCOL.md) (englisch). Offen ist noch die Kodierung negativer Messwerte.
-- Weitere Mitschnitte (z. B. von anderen Modellen) entstehen mit `tools/hidspy/capture.sh`: ElitechLog beenden, Skript starten, pro Speichern genau eine Einstellung ändern und die Schreibvorgänge in `tools/hidspy/hid.log` vergleichen. ⚠️ Speichern löscht die laufende Aufzeichnung auf dem Gerät, deshalb vorher die CSV vom Laufwerk sichern.
+Noch offen:
 
-**Umsetzung danach:**
-
-- Rust-Seite (Tauri) mit dem Crate `hidapi`: Befehle als Tauri-Commands (`device_info`, `read_config`, `write_config`, `sync_time`) neben dem vorhandenen `read_loggers`
-- UI-Bereich „Gerät“: Live-Infos (Uhrzeit, Batterie, Status, Messwerte) und Konfigurationsformular, mit deutlicher Warnung, dass Speichern die Aufzeichnung löscht
+- Kodierung negativer Messwerte prüfen (ein Messwert unter 0 °C)
+- Live-Infos vom Logger (Status, aktueller Messwert) in der Oberfläche
 - Optional für die Browser-Version: WebHID (nur Chrome/Edge)
-- Tests mit aufgezeichneten Paketen als Fixtures
 
 ## Lizenz
 

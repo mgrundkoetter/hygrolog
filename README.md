@@ -33,7 +33,7 @@ Both sources are open and need no API key. Data is cached per month. Months more
 2. Drag the **CSV file** into the app window or choose it via **Import CSV**.
 3. Use **Edit device** to give the device a title and set its location and weather source. The default is Malter (Dippoldiswalde, Saxony); new devices start with the location of the device currently shown.
 4. More data for a device: **Upload data**. A new logger: **Add device**, or simply drop its CSV file. Files always end up at the device named by their serial number.
-5. In the desktop app, **Read from logger** reads a connected logger directly over USB, without the CSV file (tested with the RC-4H Pro).
+5. In the desktop app, **Read from logger** reads a connected logger directly over USB, without the CSV file, and **Configure logger** sets interval, start mode, time zone, alarm limits and the clock (tested with the RC-4H Pro). Saving a configuration erases the recording on the logger, so Hygrolog imports it first.
 
 > **Time base:** The CSV contains the time zone the logger was configured with (`Time Base: UTC+00:00`). If the curves look shifted by an hour or two compared to the weather, you can correct the time base per file in the *Imported files* list.
 
@@ -86,22 +86,17 @@ src-tauri/        desktop shell (Tauri 2)
 
 Other Elitech models (RC-4 Pro, RC-5+, …) write the same CSV format and should work as well. Sample files from other models are very welcome.
 
-## TODO: Configure the device directly via USB
+## USB access
 
-Goal: Hygrolog should be able to configure the logger itself (interval, start mode, alarm limits, time zone, set the clock from the computer), so the vendor app is no longer needed at all. Reading measurements via USB already works in the desktop app.
+The Pro models present themselves via USB as a drive (PDF/CSV) **and additionally as a HID device**. Over HID, the desktop app reads measurements and writes the configuration, so the vendor app ElitechLog is no longer needed. Older RC-4/RC-5 models without "Pro" use a serial interface instead ([elitech-datareader](https://pypi.org/project/elitech-datareader/)), which is a different protocol.
 
-**Findings so far:**
+The protocol was decoded from captures of ElitechLog with a real RC-4H Pro. The details and recorded packets are in [tools/hidspy/PROTOCOL.md](tools/hidspy/PROTOCOL.md). More captures (e.g. from other models) are made with `tools/hidspy/capture.sh`: quit ElitechLog, run the script, change one setting per save and compare the writes in `tools/hidspy/hid.log`. ⚠️ Saving a configuration erases the recording on the device, so back up the CSV first.
 
-- The Pro models present themselves via USB as a drive (PDF/CSV) **and additionally as a HID device**. ElitechLog uses [hidapi](https://github.com/libusb/hidapi) for this. Older RC-4/RC-5 models without "Pro" use a serial interface instead ([elitech-datareader](https://pypi.org/project/elitech-datareader/)), which is a different protocol.
-- Captures with a real RC-4H Pro have decoded the packet format, the commands, nearly all configuration fields and the measurement read. The details and recorded packets are in [tools/hidspy/PROTOCOL.md](tools/hidspy/PROTOCOL.md). The encoding of negative measurements is still missing.
-- More captures (e.g. from other models) are made with `tools/hidspy/capture.sh`: quit ElitechLog, run the script, change one setting per save and compare the writes in `tools/hidspy/hid.log`. ⚠️ Saving a configuration erases the recording on the device, so back up the CSV first.
+Still open:
 
-**Implementation afterwards:**
-
-- Rust side (Tauri) using the `hidapi` crate: commands as Tauri commands (`device_info`, `read_config`, `write_config`, `sync_time`) next to the existing `read_loggers`
-- "Device" section in the UI: live info (clock, battery, status, readings) and a configuration form, with a clear warning that saving erases the recording
+- Check the encoding of negative measurements (a reading below 0 °C)
+- Live info from the logger (status, current reading) in the UI
 - Optional for the browser version: WebHID (Chrome/Edge only)
-- Tests with recorded packets as fixtures
 
 ## License
 
