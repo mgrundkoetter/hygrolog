@@ -1,7 +1,7 @@
 {
   "name": "hygrolog",
   "private": true,
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "Viewer for Elitech RC temperature/humidity loggers with weather data for comparison",
   "type": "module",
   "license": "MIT",
