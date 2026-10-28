@@ -124,7 +124,7 @@ ElitechLog reads 12 points per request from index 0 until the count from paramet
 4. Write offsets 0–349 in 50-byte chunks; each chunk is acknowledged with `01`. ElitechLog never writes the last two bytes.
 5. Send `c0/02` with payload `02`. It erases the recording on the device, so read the measurements first.
 
-Hygrolog does this in `src-tauri/src/elitech/config.rs`. Its tests re-encode all 27 captured writes and get ElitechLog's bytes back, apart from the dialog-state bytes below. It deals with ElitechLog's own rules as follows:
+Hygrolog does this in `src/elitech.ts`, shared by the desktop app and the browser version. Its tests re-encode all 27 captured writes and get ElitechLog's bytes back, apart from the dialog-state bytes below. It deals with ElitechLog's own rules as follows:
 
 - ElitechLog turns pause off whenever cyclic logging or the audible alarm is switched on, but lets the user turn it back on. Hygrolog's form does the same.
 - ElitechLog resets H1's alarm type and delay when its limit is edited. Hygrolog keeps both, since it doesn't offer them.

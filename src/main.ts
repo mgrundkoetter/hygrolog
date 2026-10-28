@@ -5,7 +5,17 @@ import * as db from './db';
 import { deviceArt, modelLabel } from './deviceArt';
 import { convertHumidity, humidityUnits, type HumidityMode } from './humidity';
 import { languageNames, locale, setLanguage, t, translateDocument, type LangSetting } from './i18n';
-import { loggerAccess, readConfigs, readLoggers, writeConfig, type ConnectedLogger, type LoggerConfig, type StartMode } from './logger';
+import {
+  InvalidConfig,
+  loggerAccess,
+  LoggerNotFound,
+  readConfigs,
+  readLoggers,
+  writeConfig,
+  type ConnectedLogger,
+  type LoggerConfig,
+  type StartMode,
+} from './logger';
 import { parseElitechCsv } from './parser';
 import { loadSettings, saveSettings, type Settings } from './settings';
 import { nights } from './sun';
@@ -137,8 +147,9 @@ async function importFiles(files: FileList | File[], target?: string) {
 }
 
 function loggerError(e: unknown) {
-  const message = String(e);
-  toast(message === 'not-found' ? t().loggerNotFound : t().loggerFailed(message), true);
+  if (e instanceof LoggerNotFound) toast(t().loggerNotFound, true);
+  else if (e instanceof InvalidConfig) toast(e.message, true);
+  else toast(t().loggerFailed(e instanceof Error ? e.message : String(e)), true);
 }
 
 /** Reads every connected logger over USB and imports its recording. Returns false if reading failed. */

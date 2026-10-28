@@ -32,7 +32,7 @@ Beide Quellen sind offen und brauchen keinen API-Schlüssel. Die Daten werden pr
 2. Die **CSV-Datei** in das App-Fenster ziehen oder über **CSV importieren** auswählen.
 3. Über **Gerät bearbeiten** einen Titel vergeben sowie Standort und Wetterquelle einstellen. Voreingestellt ist Malter (Dippoldiswalde); neue Geräte übernehmen den Standort des gerade angezeigten Geräts.
 4. Weitere Daten für ein Gerät: **Daten hochladen**. Ein neuer Logger: **Gerät hinzufügen** oder einfach seine CSV-Datei ins Fenster ziehen. Dateien landen immer bei dem Gerät, zu dem ihre Seriennummer gehört.
-5. In der Desktop-App liest **Vom Logger lesen** einen angeschlossenen Logger direkt per USB aus, ohne CSV-Datei. **Logger konfigurieren** stellt Intervall, Startmodus, Zeitzone, Alarmgrenzen und die Uhr ein (getestet mit dem RC-4H Pro). Speichern löscht die Aufzeichnung auf dem Logger, deshalb importiert Hygrolog sie vorher.
+5. In der Desktop-App sowie in Chrome oder Edge liest **Vom Logger lesen** einen angeschlossenen Logger direkt per USB aus, ohne CSV-Datei. **Logger konfigurieren** stellt Intervall, Startmodus, Zeitzone, Alarmgrenzen und die Uhr ein (getestet mit dem RC-4H Pro). Speichern löscht die Aufzeichnung auf dem Logger, deshalb importiert Hygrolog sie vorher.
 
 > **Zeitbasis:** Die CSV enthält die Zeitzone, mit der der Logger konfiguriert wurde (`Time Base: UTC+00:00`). Wirken die Kurven gegenüber dem Wetter um ein oder zwei Stunden verschoben, lässt sich die Zeitbasis in der Liste *Importierte Dateien* pro Datei korrigieren.
 
@@ -44,7 +44,7 @@ Die Pakete sind nicht signiert, weil Signaturzertifikate Geld kosten. Beim erste
 
 - **macOS:** App einmal öffnen und die Warnung mit *Fertig* schließen. Dann *Systemeinstellungen → Datenschutz & Sicherheit* öffnen, nach unten zum Hinweis zu Hygrolog scrollen und *Dennoch öffnen* klicken (mit Passwort bestätigen). Alternativ im Terminal: `xattr -dr com.apple.quarantine /Applications/Hygrolog.app`
 - **Windows:** SmartScreen → *Weitere Informationen* → *Trotzdem ausführen*
-- **Linux:** Damit die App Logger per USB auslesen darf, braucht es eine udev-Regel, z. B. in `/etc/udev/rules.d/70-elitech.rules`: `SUBSYSTEM=="hidraw", ATTRS{idVendor}=="246c", ATTRS{idProduct}=="9001", TAG+="uaccess"`. Danach den Logger neu anstecken.
+- **Linux:** Damit App oder Browser Logger per USB auslesen dürfen, braucht es eine udev-Regel, z. B. in `/etc/udev/rules.d/70-elitech.rules`: `SUBSYSTEM=="hidraw", ATTRS{idVendor}=="246c", ATTRS{idProduct}=="9001", TAG+="uaccess"`. Danach den Logger neu anstecken.
 
 Alternativ läuft dieselbe App ohne Installation im Browser: [https://mgrundkoetter.github.io/hygrolog/](https://mgrundkoetter.github.io/hygrolog/)
 
@@ -71,6 +71,9 @@ npm run tauri build  # Installer für das aktuelle Betriebssystem
 
 ```
 src/parser.ts     CSV-Parser für Elitech-Berichte (Kopfbereich + Date,Time,Temperature,Humidity)
+src/elitech.ts    USB-HID-Protokoll der Logger: Aufzeichnung und Konfiguration lesen/schreiben
+src/usb.ts        USB-Zugang: Desktop-Brücke (src-tauri/src/usb.rs) oder WebHID
+src/logger.ts     Logger-Zugriff für die Oberfläche
 src/db.ts         IndexedDB: Messwerte, Importe, Geräte, Wetter-Cache
 src/weather.ts    Wetterquellen (Bright Sky, Open-Meteo), Monats-Cache, Ortssuche
 src/sun.ts        Sonnenzeiten und Nachtintervalle
@@ -87,7 +90,7 @@ Weitere Elitech-Modelle (RC-4 Pro, RC-5+, …) schreiben dasselbe CSV-Format und
 
 ## USB-Zugriff
 
-Die Pro-Modelle melden sich per USB als Laufwerk (PDF/CSV) **und zusätzlich als HID-Gerät**. Über HID liest die Desktop-App Messwerte aus und schreibt die Konfiguration, die Hersteller-App ElitechLog ist damit nicht mehr nötig. Ältere RC-4/RC-5 ohne „Pro“ nutzen dagegen eine serielle Schnittstelle ([elitech-datareader](https://pypi.org/project/elitech-datareader/)), das ist ein anderes Protokoll.
+Die Pro-Modelle melden sich per USB als Laufwerk (PDF/CSV) **und zusätzlich als HID-Gerät**. Über HID liest Hygrolog Messwerte aus und schreibt die Konfiguration, die Hersteller-App ElitechLog ist damit nicht mehr nötig. Die Desktop-App spricht über `hidapi` mit dem Logger, die Browser-Version über WebHID, das nur Chrome und Edge anbieten. Beim ersten Mal fragt der Browser, welches Gerät er verwenden darf. Ältere RC-4/RC-5 ohne „Pro“ nutzen dagegen eine serielle Schnittstelle ([elitech-datareader](https://pypi.org/project/elitech-datareader/)), das ist ein anderes Protokoll.
 
 Das Protokoll wurde aus Mitschnitten von ElitechLog mit einem echten RC-4H Pro entschlüsselt. Details und aufgezeichnete Pakete stehen in [tools/hidspy/PROTOCOL.md](tools/hidspy/PROTOCOL.md) (englisch). Weitere Mitschnitte (z. B. von anderen Modellen) entstehen mit `tools/hidspy/capture.sh`: ElitechLog beenden, Skript starten, pro Speichern genau eine Einstellung ändern und die Schreibvorgänge in `tools/hidspy/hid.log` vergleichen. ⚠️ Speichern löscht die laufende Aufzeichnung auf dem Gerät, deshalb vorher die CSV vom Laufwerk sichern.
 
@@ -95,7 +98,6 @@ Noch offen:
 
 - Kodierung negativer Messwerte prüfen (ein Messwert unter 0 °C)
 - Live-Infos vom Logger (Status, aktueller Messwert) in der Oberfläche
-- Optional für die Browser-Version: WebHID (nur Chrome/Edge)
 
 ## Lizenz
 

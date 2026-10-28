@@ -1,36 +1,23 @@
-// Talks to loggers directly over USB. Only the desktop app has HID access (src-tauri/src/elitech.rs).
+// Logger access for the UI: combines the protocol (elitech.ts) with the USB transports (usb.ts).
 
+import {
+  configure,
+  decodeConfig,
+  LoggerNotFound,
+  MODEL,
+  readParams,
+  readReport,
+  serialOf,
+  validateConfig,
+  type LoggerConfig,
+  type Transport,
+} from './elitech';
 import type { ParsedReport } from './parser';
+import { connectedLoggers, usbAvailable } from './usb';
 
-export const loggerAccess = '__TAURI_INTERNALS__' in window;
+export { InvalidConfig, LoggerNotFound, type LoggerConfig, type StartMode } from './elitech';
 
-export type StartMode = 'button' | 'immediate' | 'timed';
-
-/** Mirrors `Config` in src-tauri/src/elitech/config.rs. */
-export interface LoggerConfig {
-  intervalSecs: number;
-  startMode: StartMode;
-  /** Timed start, as wall-clock epoch ms in the logger's time zone. */
-  startAt: number;
-  startDelaySecs: number;
-  stopByButton: boolean;
-  pause: boolean;
-  cyclic: boolean;
-  keyTone: boolean;
-  alarmBeeps: number;
-  /** 1 = 15 s, 2 = 30 s. */
-  displayTime: number;
-  fahrenheit: boolean;
-  pdfChinese: boolean;
-  tzOffsetMin: number;
-  /** null switches the limit off. */
-  tempHigh: number | null;
-  tempLow: number | null;
-  humHigh: number;
-  humLow: number;
-  tripId: string;
-  description: string;
-}
+export const loggerAccess = usbAvailable;
 
 export interface ConnectedLogger {
   serial: string;
@@ -38,16 +25,33 @@ export interface ConnectedLogger {
   config: LoggerConfig;
 }
 
-/** Commands reject with "not-found" if no logger is connected. */
-async function call<T>(command: string, args?: Record<string, unknown>): Promise<T> {
-  const { invoke } = await import('@tauri-apps/api/core');
-  return invoke<T>(command, args);
+let queue: Promise<unknown> = Promise.resolve();
+
+/** Runs `task` on every connected logger, one session at a time so packets never interleave. */
+function withLoggers<T>(ask: boolean, task: (logger: Transport) => Promise<T>): Promise<T[]> {
+  const run = queue.then(async () => {
+    const loggers = await connectedLoggers(ask);
+    if (!loggers.length) throw new LoggerNotFound();
+    const results: T[] = [];
+    for (const logger of loggers) results.push(await task(logger));
+    return results;
+  });
+  queue = run.catch(() => undefined);
+  return run;
 }
 
 /** One report per connected logger, shaped like a parsed CSV. */
-export const readLoggers = () => call<ParsedReport[]>('read_loggers');
+export const readLoggers = (): Promise<ParsedReport[]> => withLoggers(true, readReport);
 
-export const readConfigs = () => call<ConnectedLogger[]>('read_configs');
+export const readConfigs = (): Promise<ConnectedLogger[]> =>
+  withLoggers(true, async (logger) => {
+    const params = await readParams(logger);
+    return { serial: serialOf(params), model: MODEL, config: decodeConfig(params) };
+  });
 
-/** Reconfigures the logger and sets its clock. This erases its recording. */
-export const writeConfig = (serial: string, config: LoggerConfig) => call<void>('write_config', { serial, config });
+/** Reconfigures the logger with this serial number and sets its clock. This erases its recording. */
+export async function writeConfig(serial: string, config: LoggerConfig) {
+  validateConfig(config);
+  const done = await withLoggers(true, (logger) => configure(logger, serial, config, Date.now()));
+  if (!done.includes(true)) throw new LoggerNotFound();
+}
