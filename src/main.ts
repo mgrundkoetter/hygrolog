@@ -5,6 +5,7 @@ import * as db from './db';
 import { deviceArt, modelLabel } from './deviceArt';
 import { convertHumidity, humidityUnits, type HumidityMode } from './humidity';
 import { languageNames, locale, setLanguage, t, translateDocument, type LangSetting } from './i18n';
+import { loggerAccess, readLoggers } from './logger';
 import { parseElitechCsv } from './parser';
 import { loadSettings, saveSettings, type Settings } from './settings';
 import { nights } from './sun';
@@ -91,6 +92,20 @@ async function selectDevice(serial: string) {
 
 // ---------- import ----------
 
+/** New devices start out where the currently shown one is; most loggers live close together. */
+function newDeviceDefaults() {
+  const dev = current();
+  return {
+    location: dev ? deviceLocation(dev) : settings.location,
+    provider: dev ? deviceProvider(dev).id : settings.provider,
+  };
+}
+
+async function showImported(serial: string) {
+  if (serial !== settings.selectedDevice) await selectDevice(serial);
+  else await presetRange(30);
+}
+
 /** Imports CSV files. Each file goes to the device named by its serial number; `target` is the device the user uploaded for. */
 async function importFiles(files: FileList | File[], target?: string) {
   const list = Array.from(files).filter((f) => /\.csv$/i.test(f.name) || f.type === 'text/csv');
@@ -98,12 +113,7 @@ async function importFiles(files: FileList | File[], target?: string) {
     toast(t().pickCsvOnly, true);
     return;
   }
-  // New devices start out where the currently shown one is; most loggers live close together.
-  const dev = current();
-  const defaults = {
-    location: dev ? deviceLocation(dev) : settings.location,
-    provider: dev ? deviceProvider(dev).id : settings.provider,
-  };
+  const defaults = newDeviceDefaults();
   let lastSerial: string | undefined;
   const elsewhere: [file: string, serial: string][] = [];
   for (const file of list) {
@@ -123,8 +133,38 @@ async function importFiles(files: FileList | File[], target?: string) {
     const owner = devices.find((d) => d.serial === serial);
     if (owner) toast(t().importedOtherDevice(name, deviceTitle(owner)));
   }
-  if (lastSerial !== settings.selectedDevice) await selectDevice(lastSerial);
-  else await presetRange(30);
+  await showImported(lastSerial);
+}
+
+/** Reads every connected logger over USB and imports its recording. */
+async function importFromLoggers() {
+  const buttons = [$<HTMLButtonElement>('btn-read'), $<HTMLButtonElement>('btn-read-empty')];
+  const label = (text: string) =>
+    buttons.forEach((b) => ((b.querySelector('span') ?? b).textContent = text));
+  buttons.forEach((b) => (b.disabled = true));
+  label(t().readingLogger);
+  let lastSerial: string | undefined;
+  try {
+    const defaults = newDeviceDefaults();
+    for (const report of await readLoggers()) {
+      if (!report.rows.length) {
+        toast(t().loggerEmpty(report.serial));
+        continue;
+      }
+      const name = `${report.serial}-${report.tripId} (USB)`;
+      const { record, added } = await db.importReport(report, name, defaults);
+      toast(t().imported(name, record.count, record.count - added));
+      lastSerial = report.serial;
+    }
+  } catch (e) {
+    const message = String(e);
+    toast(message === 'not-found' ? t().loggerNotFound : t().loggerFailed(message), true);
+  } finally {
+    buttons.forEach((b) => (b.disabled = false));
+    label(t().readLogger);
+  }
+  await reloadMeta();
+  if (lastSerial) await showImported(lastSerial);
 }
 
 // ---------- range ----------
@@ -468,6 +508,10 @@ function bindControls() {
   $('btn-import-empty').addEventListener('click', () => pick());
   $('btn-add-device').addEventListener('click', () => pick());
   $('btn-upload').addEventListener('click', () => pick(settings.selectedDevice));
+  for (const id of ['btn-read', 'btn-read-empty']) {
+    $(id).hidden = !loggerAccess;
+    $(id).addEventListener('click', () => void importFromLoggers());
+  }
   fileInput.addEventListener('change', () => {
     if (fileInput.files?.length) void importFiles(fileInput.files, uploadTarget);
     fileInput.value = '';

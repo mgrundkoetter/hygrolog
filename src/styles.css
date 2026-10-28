@@ -662,6 +662,12 @@ select:focus-visible,
   font-size: 13px;
   margin: 0 0 20px;
 }
+.empty-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
 
 /* ---------- Dialog ---------- */
 

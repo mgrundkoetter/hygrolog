@@ -33,6 +33,7 @@ Both sources are open and need no API key. Data is cached per month. Months more
 2. Drag the **CSV file** into the app window or choose it via **Import CSV**.
 3. Use **Edit device** to give the device a title and set its location and weather source. The default is Malter (Dippoldiswalde, Saxony); new devices start with the location of the device currently shown.
 4. More data for a device: **Upload data**. A new logger: **Add device**, or simply drop its CSV file. Files always end up at the device named by their serial number.
+5. In the desktop app, **Read from logger** reads a connected logger directly over USB, without the CSV file (tested with the RC-4H Pro).
 
 > **Time base:** The CSV contains the time zone the logger was configured with (`Time Base: UTC+00:00`). If the curves look shifted by an hour or two compared to the weather, you can correct the time base per file in the *Imported files* list.
 
@@ -44,6 +45,7 @@ The packages are not signed, because signing certificates cost money. The operat
 
 - **macOS:** Open the app once and close the warning with *Done*. Then go to *System Settings → Privacy & Security*, scroll down to the message about Hygrolog and click *Open Anyway* (confirm with your password). Alternatively, in the Terminal: `xattr -dr com.apple.quarantine /Applications/Hygrolog.app`
 - **Windows:** SmartScreen → *More info* → *Run anyway*
+- **Linux:** to read loggers over USB, allow access with a udev rule, e.g. in `/etc/udev/rules.d/70-elitech.rules`: `SUBSYSTEM=="hidraw", ATTRS{idVendor}=="246c", ATTRS{idProduct}=="9001", TAG+="uaccess"`. Then reconnect the logger.
 
 The same app also runs in the browser, without installation: [https://mgrundkoetter.github.io/hygrolog/](https://mgrundkoetter.github.io/hygrolog/)
 
@@ -86,7 +88,7 @@ Other Elitech models (RC-4 Pro, RC-5+, …) write the same CSV format and should
 
 ## TODO: Configure the device directly via USB
 
-Goal: Hygrolog should be able to configure the logger itself (interval, start mode, alarm limits, time zone, set the clock from the computer), so the vendor app is no longer needed at all. Bonus: read measurements directly via USB instead of through the CSV file.
+Goal: Hygrolog should be able to configure the logger itself (interval, start mode, alarm limits, time zone, set the clock from the computer), so the vendor app is no longer needed at all. Reading measurements via USB already works in the desktop app.
 
 **Findings so far:**
 
@@ -96,10 +98,9 @@ Goal: Hygrolog should be able to configure the logger itself (interval, start mo
 
 **Implementation afterwards:**
 
-- Rust side (Tauri) using the `hidapi` crate: commands as Tauri commands (`device_info`, `read_config`, `write_config`, `sync_time`, possibly `read_records`)
+- Rust side (Tauri) using the `hidapi` crate: commands as Tauri commands (`device_info`, `read_config`, `write_config`, `sync_time`) next to the existing `read_loggers`
 - "Device" section in the UI: live info (clock, battery, status, readings) and a configuration form, with a clear warning that saving erases the recording
 - Optional for the browser version: WebHID (Chrome/Edge only)
-- Linux: document a udev rule for HID access
 - Tests with recorded packets as fixtures
 
 ## License
