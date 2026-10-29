@@ -1,6 +1,6 @@
 # Hygrolog
 
-**English** · [Deutsch](README.de.md)
+**English** · [Deutsch](README.de.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md)
 
 A small, free viewer for **Elitech RC temperature and humidity data loggers** (tested with the RC-4H Pro). Measurements are shown in an interactive chart over any time range, together with **weather data** (temperature and humidity) and **sunrise/sunset** for a location of your choice.
 
@@ -16,8 +16,6 @@ A small, free viewer for **Elitech RC temperature and humidity data loggers** (t
 - Importing the same recording more than once is harmless: duplicate readings are merged
 - Interface in English, German, Simplified and Traditional Chinese: the language follows the system language and can be changed in the settings
 - Everything stays local: measurements and the weather cache live in the app (IndexedDB). Only weather requests go over the network.
-
-- User interface in English and German: detected automatically from the system language, switchable in the settings
 
 ## Weather data
 

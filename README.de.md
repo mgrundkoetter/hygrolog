@@ -1,6 +1,6 @@
 # Hygrolog
 
-[English](README.md) · **Deutsch**
+[English](README.md) · **Deutsch** · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md)
 
 Eine kleine, freie Auswertungs-App für **Elitech-RC-Temperatur- und Feuchtelogger** (getestet mit dem RC-4H Pro). Die Messwerte erscheinen in einem interaktiven Graphen über beliebige Zeiträume, zusammen mit **Wetterdaten** (Temperatur und Luftfeuchte) und **Sonnenauf-/-untergang** für einen frei wählbaren Ort.
 
